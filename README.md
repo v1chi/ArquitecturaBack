@@ -1,42 +1,71 @@
 # Mi Primer Backend en Java
 
-Estructura básica de un backend en Java con Spring Boot para empezar a trabajar.
+Backend RESTful en Java usando Spring Boot, MySQL y autenticación JWT. Permite registro/login de usuarios, creación y gestión de posts, y validación de seguridad en endpoints protegidos.
 
-## 📋 Lo que necesitas tener instalado
+## 📋 Requisitos
+- Java 17 (o superior)
+- Maven
+- MySQL
+- Visual Studio Code (opcional)
 
-- **Java 17** (o superior)
-- **Maven**
-- **Visual Studio Code** con extensiones de Java
-
-## 🚀 Cómo ejecutar
-
-1. **Ejecutar la aplicación:**
+## ⚡ Cómo ejecutar
+1. Configura tu base de datos MySQL y actualiza `src/main/resources/application.properties` con tus credenciales.
+2. Ejecuta:
    ```bash
    mvn spring-boot:run
    ```
+3. Prueba los endpoints con Postman o similar.
 
-2. **Probar en el navegador:**
-   - `http://localhost:8080/api/hola`
-   - `http://localhost:8080/api/hola/TuNombre`
-
-## 📁 Estructura básica
-
+## 📁 Estructura del proyecto
 ```
 src/main/java/com/ejemplo/mibackend/
 ├── MiBackendApplication.java          # Clase principal
-└── controller/
-    └── HolaMundoController.java       # Tu primer controlador REST
+├── config/                           # Seguridad y JWT
+├── controller/                       # Endpoints REST
+├── dto/                              # Objetos de transferencia de datos
+├── entity/                           # Modelos de BD (Usuario, Post)
+├── repository/                       # Acceso a BD
+├── service/                          # Lógica de negocio
+├── util/                             # Utilidades (JWT)
 ```
 
-## ✅ Lo que tienes listo
+## 🔒 Autenticación JWT
+- Registro y login devuelven un token JWT.
+- Endpoints protegidos requieren el header:
+  ```
+  Authorization: Bearer {tu-token-jwt}
+  ```
 
-- ✅ Proyecto Spring Boot funcionando
-- ✅ Un endpoint básico de prueba
-- ✅ Estructura organizada para crecer
+## 🌐 Endpoints principales
+### Usuarios y autenticación
+- POST /auth/register — Registro de usuario
+- POST /auth/login — Login y obtención de token
 
-## � Próximos pasos cuando quieras agregar más
+### Posts
+- GET /posts — Ver todos los posts (público)
+- POST /posts — Crear post (protegido)
+- GET /posts/my-posts — Ver tus posts (protegido)
+- PUT /posts/{id} — Editar tu post (protegido)
+- DELETE /posts/{id} — Eliminar tu post (protegido)
 
-- Agregar base de datos (H2, MySQL, PostgreSQL)
-- Crear más controladores
-- Añadir servicios y repositorios
-- Implementar validaciones
+## 🛠️ Tecnologías usadas
+- Spring Boot
+- Spring Security
+- JWT (jjwt)
+- JPA/Hibernate
+- MySQL
+
+## 📚 Explicación rápida
+- Controller: Recibe peticiones HTTP
+- Service: Lógica de negocio
+- Repository: Acceso a la base de datos
+- Entity: Modelos/tablas
+- Config/Util: Seguridad y JWT
+
+## 💡 Próximos pasos
+- Agregar comentarios, likes, perfiles avanzados
+- Implementar roles y permisos
+- Mejorar validaciones y manejo de errores
+
+---
+¡Listo para construir tu propio backend profesional en Java! 🚀
