@@ -2,13 +2,13 @@
 
 Backend RESTful en Java usando Spring Boot, MySQL y autenticación JWT. Permite registro/login de usuarios, creación y gestión de posts, y validación de seguridad en endpoints protegidos.
 
-## 📋 Requisitos
+##  Requisitos
 - Java 17 (o superior)
 - Maven
 - MySQL
 - Visual Studio Code (opcional)
 
-## ⚡ Cómo ejecutar
+##  Cómo ejecutar
 1. Configura tu base de datos MySQL y actualiza `src/main/resources/application.properties` con tus credenciales.
 2. Ejecuta:
    ```bash
@@ -16,7 +16,7 @@ Backend RESTful en Java usando Spring Boot, MySQL y autenticación JWT. Permite 
    ```
 3. Prueba los endpoints con Postman o similar.
 
-## 📁 Estructura del proyecto
+##  Estructura del proyecto
 ```
 src/main/java/com/ejemplo/mibackend/
 ├── MiBackendApplication.java          # Clase principal
@@ -29,14 +29,14 @@ src/main/java/com/ejemplo/mibackend/
 ├── util/                             # Utilidades (JWT)
 ```
 
-## 🔒 Autenticación JWT
+## Autenticación JWT
 - Registro y login devuelven un token JWT.
 - Endpoints protegidos requieren el header:
   ```
   Authorization: Bearer {tu-token-jwt}
   ```
 
-## 🌐 Endpoints principales
+##  Endpoints principales
 ### Usuarios y autenticación
 - POST /auth/register — Registro de usuario
 - POST /auth/login — Login y obtención de token
@@ -48,24 +48,16 @@ src/main/java/com/ejemplo/mibackend/
 - PUT /posts/{id} — Editar tu post (protegido)
 - DELETE /posts/{id} — Eliminar tu post (protegido)
 
-## 🛠️ Tecnologías usadas
+## Tecnologías usadas
 - Spring Boot
 - Spring Security
 - JWT (jjwt)
 - JPA/Hibernate
 - MySQL
 
-## 📚 Explicación rápida
+##  Explicación rápida
 - Controller: Recibe peticiones HTTP
 - Service: Lógica de negocio
 - Repository: Acceso a la base de datos
 - Entity: Modelos/tablas
 - Config/Util: Seguridad y JWT
-
-## 💡 Próximos pasos
-- Agregar comentarios, likes, perfiles avanzados
-- Implementar roles y permisos
-- Mejorar validaciones y manejo de errores
-
----
-¡Listo para construir tu propio backend profesional en Java! 🚀
