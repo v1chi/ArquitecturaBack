@@ -2,7 +2,6 @@ com\ejemplo\mibackend\service\AuthService.class
 com\ejemplo\mibackend\entity\Post.class
 com\ejemplo\mibackend\service\UsuarioService.class
 com\ejemplo\mibackend\controller\AuthController.class
-com\ejemplo\mibackend\controller\HolaMundoController.class
 com\ejemplo\mibackend\dto\RegisterRequest.class
 com\ejemplo\mibackend\repository\UsuarioRepository.class
 com\ejemplo\mibackend\config\SecurityConfig.class
