@@ -1,63 +1,45 @@
-# Mi Primer Backend en Java
+# Social Network Backend (Spring Boot)
 
-Backend RESTful en Java usando Spring Boot, MySQL y autenticación JWT. Permite registro/login de usuarios, creación y gestión de posts, y validación de seguridad en endpoints protegidos.
+Minimal Spring Boot backend with JWT authentication and PostgreSQL.
 
-##  Requisitos
-- Java 17 (o superior)
-- Maven
-- MySQL
-- Visual Studio Code (opcional)
+## Stack
+- Spring Boot 3 (Java 17)
+- Spring Security + JWT
+- Spring Data JPA + PostgreSQL
 
-##  Cómo ejecutar
-1. Configura tu base de datos MySQL y actualiza `src/main/resources/application.properties` con tus credenciales.
-2. Ejecuta:
-   ```bash
-   mvn spring-boot:run
-   ```
-3. Prueba los endpoints con Postman o similar.
-
-##  Estructura del proyecto
+## Quick Start (Docker)
+1) Copy env file
+```bash
+cp .env.example .env
 ```
-src/main/java/com/ejemplo/mibackend/
-├── MiBackendApplication.java          # Clase principal
-├── config/                           # Seguridad y JWT
-├── controller/                       # Endpoints REST
-├── dto/                              # Objetos de transferencia de datos
-├── entity/                           # Modelos de BD (Usuario, Post)
-├── repository/                       # Acceso a BD
-├── service/                          # Lógica de negocio
-├── util/                             # Utilidades (JWT)
+2) Start services
+```bash
+docker compose up --build -d
+```
+- App: http://localhost:8080
+
+## Run Locally
+- Requirements: Java 17, Maven, PostgreSQL
+- Ensure a DB exists that matches `.env`
+```bash
+mvn spring-boot:run
 ```
 
-## Autenticación JWT
-- Registro y login devuelven un token JWT.
-- Endpoints protegidos requieren el header:
-  ```
-  Authorization: Bearer {tu-token-jwt}
-  ```
+## Environment
+Set in `.env`:
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- `JWT_SECRET` (64+ chars)
+- `API_BASE_URL` (used for email links; default http://localhost:8080)
 
-##  Endpoints principales
-### Usuarios y autenticación
-- POST /auth/register — Registro de usuario
-- POST /auth/login — Login y obtención de token
+## Auth
+- POST `/auth/register` → sends confirmation email (no token)
+- GET `/auth/confirm-email?token=...` → activate account
+- POST `/auth/login` → returns `{access_token}` (28 days)
+- Use header: `Authorization: Bearer <access_token>`
 
-### Posts
-- GET /posts — Ver todos los posts (público)
-- POST /posts — Crear post (protegido)
-- GET /posts/my-posts — Ver tus posts (protegido)
-- PUT /posts/{id} — Editar tu post (protegido)
-- DELETE /posts/{id} — Eliminar tu post (protegido)
-
-## Tecnologías usadas
-- Spring Boot
-- Spring Security
-- JWT (jjwt)
-- JPA/Hibernate
-- MySQL
-
-##  Explicación rápida
-- Controller: Recibe peticiones HTTP
-- Service: Lógica de negocio
-- Repository: Acceso a la base de datos
-- Entity: Modelos/tablas
-- Config/Util: Seguridad y JWT
+## Reset Database (Docker)
+```bash
+docker compose down
+docker volume rm backend_db_data
+docker compose up -d
+```
