@@ -21,11 +21,13 @@ public class JwtService {
     private final Key signingKey;
     private final int accessMinutes;
     private final int emailTokenMinutes;
+    private final int passwordResetMinutes;
 
     public JwtService(
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.accessToken.expirationMinutes}") int accessMinutes,
-            @Value("${jwt.emailToken.expirationMinutes:1440}") int emailTokenMinutes
+            @Value("${jwt.emailToken.expirationMinutes:1440}") int emailTokenMinutes,
+            @Value("${jwt.passwordResetToken.expirationMinutes:60}") int passwordResetMinutes
     ) {
         if (secret == null || secret.length() < 64) {
             throw new IllegalArgumentException("jwt.secret must be at least 64 characters long");
@@ -33,6 +35,7 @@ public class JwtService {
         this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessMinutes = accessMinutes;
         this.emailTokenMinutes = emailTokenMinutes;
+        this.passwordResetMinutes = passwordResetMinutes;
     }
 
     public String generateAccessToken(String subject, Map<String, Object> claims) {
@@ -63,6 +66,27 @@ public class JwtService {
         try {
             String purpose = extractClaim(token, claims -> claims.get("purpose", String.class));
             return "email_confirm".equals(purpose);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public String generatePasswordResetToken(String subject) {
+        Instant now = Instant.now();
+        Instant expiry = now.plus(passwordResetMinutes, ChronoUnit.MINUTES);
+        return Jwts.builder()
+                .setSubject(subject)
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(expiry))
+                .claim("purpose", "password_reset")
+                .signWith(signingKey, SignatureAlgorithm.HS512)
+                .compact();
+    }
+
+    public boolean isPasswordResetToken(String token) {
+        try {
+            String purpose = extractClaim(token, claims -> claims.get("purpose", String.class));
+            return "password_reset".equals(purpose);
         } catch (Exception e) {
             return false;
         }

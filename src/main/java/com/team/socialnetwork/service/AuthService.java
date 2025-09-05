@@ -107,4 +107,38 @@ public class AuthService {
         userRepository.save(user);
         return new com.team.socialnetwork.dto.MessageResponse("Email confirmed");
     }
+
+    @Transactional(readOnly = true)
+    public com.team.socialnetwork.dto.MessageResponse requestPasswordReset(String email) {
+        // Always return 200 to avoid user enumeration
+        userRepository.findByEmail(email).ifPresent(user -> {
+            try {
+                String token = jwtService.generatePasswordResetToken(user.getEmail());
+                mailService.sendPasswordReset(user.getEmail(), token);
+            } catch (Exception ignored) {
+                // Silently ignore to avoid leaking info; logs could be added
+            }
+        });
+        return new com.team.socialnetwork.dto.MessageResponse("If the email exists, instructions were sent");
+    }
+
+    @Transactional
+    public com.team.socialnetwork.dto.MessageResponse resetPassword(String token, String newPassword) {
+        if (!jwtService.isPasswordResetToken(token)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid or expired token");
+        }
+        String email;
+        try {
+            email = jwtService.extractSubject(token);
+        } catch (Exception e) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid or expired token");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        return new com.team.socialnetwork.dto.MessageResponse("Password reset successfully");
+    }
 }

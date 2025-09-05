@@ -41,6 +41,11 @@ public class MailService {
         sendEmail(to, "✅ Confirm your account", html);
     }
 
+    public void sendPasswordReset(String to, String token) throws MessagingException, IOException {
+        String html = loadTemplate("reset-password.html", "reset-password?token=" + token);
+        sendEmail(to, "🔐 Reset your SocialNetwork password", html);
+    }
+
     private void sendEmail(String to, String subject, String html) throws MessagingException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");

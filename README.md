@@ -35,6 +35,8 @@ Set in `.env`:
 - POST `/auth/register` → sends confirmation email (no token)
 - GET `/auth/confirm-email?token=...` → activate account
 - POST `/auth/login` → returns `{access_token}` (28 days)
+- POST `/auth/request-password-reset` → sends reset email
+- POST `/auth/reset-password` → set a new password with token
 - Use header: `Authorization: Bearer <access_token>`
 
 ## Reset Database (Docker)

@@ -4,6 +4,8 @@ import com.team.socialnetwork.dto.TokenResponse;
 import com.team.socialnetwork.dto.LoginRequest;
 import com.team.socialnetwork.dto.RegisterRequest;
 import com.team.socialnetwork.dto.MessageResponse;
+import com.team.socialnetwork.dto.PasswordResetRequest;
+import com.team.socialnetwork.dto.PerformPasswordResetRequest;
 import com.team.socialnetwork.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -32,5 +34,15 @@ public class AuthController {
     @GetMapping("/confirm-email")
     public ResponseEntity<MessageResponse> confirmEmail(@RequestParam("token") String token) {
         return ResponseEntity.ok(authService.confirmEmail(token));
+    }
+
+    @PostMapping("/request-password-reset")
+    public ResponseEntity<MessageResponse> requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
+        return ResponseEntity.ok(authService.requestPasswordReset(request.getEmail()));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody PerformPasswordResetRequest request) {
+        return ResponseEntity.ok(authService.resetPassword(request.getToken(), request.getNewPassword()));
     }
 }
