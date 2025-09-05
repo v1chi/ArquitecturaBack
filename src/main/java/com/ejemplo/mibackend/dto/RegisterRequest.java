@@ -26,10 +26,11 @@ public class RegisterRequest {
     // Constructores
     public RegisterRequest() {}
     
-    public RegisterRequest(String nombre, String email, String password) {
+    public RegisterRequest(String nombre, String email, String password, String confirmPassword) {
         this.nombre = nombre;
         this.email = email;
         this.password = password;
+        this.confirmPassword = confirmPassword;
     }
     
     // Getters y Setters

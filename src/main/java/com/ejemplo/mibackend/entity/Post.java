@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "posts")
@@ -19,6 +21,10 @@ public class Post {
     @Size(max = 500, message = "El contenido no puede tener más de 500 caracteres")
     @Column(columnDefinition = "TEXT")
     private String contenido;
+    
+    @Size(max = 1000, message = "La descripción no puede tener más de 1000 caracteres")
+    @Column(columnDefinition = "TEXT")
+    private String descripcion;
     
     @Size(max = 255, message = "La URL de la imagen no puede tener más de 255 caracteres")
     private String imagen;
@@ -34,6 +40,14 @@ public class Post {
     @JoinColumn(name = "usuario_id", nullable = false)
     @JsonBackReference
     private Usuario usuario;
+    
+    // Relación con Likes - un post puede tener muchos likes
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Like> likes = new ArrayList<>();
+    
+    // Relación con Comentarios - un post puede tener muchos comentarios
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comentario> comentarios = new ArrayList<>();
     
     // Constructores
     public Post() {
@@ -62,6 +76,14 @@ public class Post {
     
     public void setContenido(String contenido) {
         this.contenido = contenido;
+    }
+    
+    public String getDescripcion() {
+        return descripcion;
+    }
+    
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
     }
     
     public String getImagen() {
@@ -94,6 +116,31 @@ public class Post {
     
     public void setUsuario(Usuario usuario) {
         this.usuario = usuario;
+    }
+    
+    public List<Like> getLikes() {
+        return likes;
+    }
+    
+    public void setLikes(List<Like> likes) {
+        this.likes = likes;
+    }
+    
+    public List<Comentario> getComentarios() {
+        return comentarios;
+    }
+    
+    public void setComentarios(List<Comentario> comentarios) {
+        this.comentarios = comentarios;
+    }
+    
+    // Métodos útiles para contar likes y comentarios
+    public int getCantidadLikes() {
+        return likes != null ? likes.size() : 0;
+    }
+    
+    public int getCantidadComentarios() {
+        return comentarios != null ? comentarios.size() : 0;
     }
     
     @PreUpdate

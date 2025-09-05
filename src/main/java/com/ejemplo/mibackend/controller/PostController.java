@@ -13,7 +13,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/posts")
-@CrossOrigin(origins = "*")
 public class PostController {
     
     @Autowired
@@ -27,6 +26,17 @@ public class PostController {
             return ResponseEntity.ok(posts);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    // 🔓 PÚBLICO - Ver post específico por ID
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getPostById(@PathVariable Long id) {
+        try {
+            PostResponse post = postService.getPostById(id);
+            return ResponseEntity.ok(post);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
     

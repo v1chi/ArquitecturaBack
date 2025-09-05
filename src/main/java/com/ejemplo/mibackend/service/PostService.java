@@ -26,6 +26,12 @@ public class PostService {
     @Autowired
     private JwtUtil jwtUtil;
     
+    @Autowired
+    private LikeService likeService;
+    
+    @Autowired
+    private ComentarioService comentarioService;
+    
     public PostResponse createPost(CreatePostRequest request, String token) {
         // Extraer email del token JWT
         String email = jwtUtil.getEmailFromToken(token.replace("Bearer ", ""));
@@ -37,6 +43,7 @@ public class PostService {
         // Crear nuevo post
         Post post = new Post();
         post.setContenido(request.getContenido());
+        post.setDescripcion(request.getDescripcion());
         post.setImagen(request.getImagen());
         post.setUsuario(usuario);
         
@@ -54,15 +61,26 @@ public class PostService {
                 .collect(Collectors.toList());
     }
     
+    public PostResponse getPostById(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post no encontrado"));
+        
+        return convertToPostResponse(post);
+    }
+    
     public List<PostResponse> getPostsByUser(String token) {
         // Extraer email del token JWT
         String email = jwtUtil.getEmailFromToken(token.replace("Bearer ", ""));
+        System.out.println("DEBUG - Email extraído del token: " + email);
         
         // Buscar usuario
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        System.out.println("DEBUG - Usuario encontrado: " + usuario.getNombre() + " (ID: " + usuario.getId() + ")");
         
         List<Post> posts = postRepository.findByUsuarioId(usuario.getId());
+        System.out.println("DEBUG - Posts encontrados para el usuario: " + posts.size());
+        
         return posts.stream()
                 .map(this::convertToPostResponse)
                 .collect(Collectors.toList());
@@ -87,6 +105,7 @@ public class PostService {
         
         // Actualizar campos
         post.setContenido(request.getContenido());
+        post.setDescripcion(request.getDescripcion());
         post.setImagen(request.getImagen());
         post.setFechaActualizacion(LocalDateTime.now());
         
@@ -118,14 +137,20 @@ public class PostService {
     }
     
     private PostResponse convertToPostResponse(Post post) {
+        // Por ahora ponemos valores por defecto para evitar errores de compilación
+        // Más adelante actualizaremos con la lógica real
         return new PostResponse(
                 post.getId(),
                 post.getContenido(),
+                post.getDescripcion(),
                 post.getImagen(),
                 post.getFechaCreacion(),
                 post.getFechaActualizacion(),
                 post.getUsuario().getId(),
-                post.getUsuario().getNombre()
+                post.getUsuario().getNombre(),
+                0, // cantidadLikes - TODO: implementar
+                0, // cantidadComentarios - TODO: implementar  
+                false // likedByCurrentUser - TODO: implementar
         );
     }
 }
