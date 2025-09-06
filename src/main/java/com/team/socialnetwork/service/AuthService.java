@@ -20,7 +20,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AuthenticationManager authenticationManager;
+
     private final JwtService jwtService;
     private final MailService mailService;
 
@@ -31,7 +31,6 @@ public class AuthService {
                        MailService mailService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.mailService = mailService;
     }
@@ -40,6 +39,9 @@ public class AuthService {
     public com.team.socialnetwork.dto.MessageResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Email already in use");
+        }
+        if (userRepository.existsByName(request.getName())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Name already in use");
         }
 
         User user = new User();
