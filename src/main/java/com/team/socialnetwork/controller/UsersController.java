@@ -1,5 +1,15 @@
 package com.team.socialnetwork.controller;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.team.socialnetwork.dto.ChangePasswordRequest;
 import com.team.socialnetwork.dto.CommentResponse;
 import com.team.socialnetwork.dto.PostResponse;
@@ -9,10 +19,7 @@ import com.team.socialnetwork.entity.User;
 import com.team.socialnetwork.repository.CommentRepository;
 import com.team.socialnetwork.repository.PostRepository;
 import com.team.socialnetwork.repository.UserRepository;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+
 import jakarta.validation.Valid;
 
 @RestController
@@ -42,7 +49,7 @@ public class UsersController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
-        SafeUser dto = new SafeUser(user.getId(), user.getName(), user.getEmail(), user.getCreatedAt());
+        SafeUser dto = new SafeUser(user.getId(), user.getName(), user.getName(), user.getEmail(), user.getCreatedAt());
         return ResponseEntity.ok(dto);
     }
 
@@ -51,7 +58,7 @@ public class UsersController {
     public ResponseEntity<java.util.List<SafeUser>> listUsers() {
         java.util.List<User> users = userRepository.findAll();
         java.util.List<SafeUser> resp = users.stream()
-                .map(u -> new SafeUser(u.getId(), u.getName(), u.getEmail(), u.getCreatedAt()))
+                .map(u -> new SafeUser(u.getId(), u.getName(), u.getName(), u.getEmail(), u.getCreatedAt()))
                 .toList();
         return ResponseEntity.ok(resp);
     }
