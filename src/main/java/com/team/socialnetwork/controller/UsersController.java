@@ -17,6 +17,7 @@ import com.team.socialnetwork.dto.PostResponse;
 import com.team.socialnetwork.dto.SafeUser;
 import com.team.socialnetwork.dto.ChangeUsernameRequest;
 import com.team.socialnetwork.dto.ChangeNameRequest;
+import com.team.socialnetwork.dto.UpdateProfileRequest;
 import com.team.socialnetwork.entity.Post;
 import com.team.socialnetwork.entity.User;
 import com.team.socialnetwork.repository.CommentRepository;
@@ -209,5 +210,30 @@ public class UsersController {
 
         userRepository.delete(user);
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Account deleted successfully"));
+    }
+
+    @PatchMapping("/me/profile")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> updateProfile(
+            Authentication authentication,
+            @RequestBody UpdateProfileRequest request
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        // For now only supports fullName; future: bio, avatar, location
+        if (request.getFullName() != null) {
+            String newName = request.getFullName().trim();
+            user.setFullName(newName.isEmpty() ? null : newName);
+        }
+
+        userRepository.save(user);
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Profile updated successfully"));
     }
 }

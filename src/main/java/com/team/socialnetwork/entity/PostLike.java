@@ -5,10 +5,10 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(name = "likes", uniqueConstraints = {
+@Table(name = "post_likes", uniqueConstraints = {
         @UniqueConstraint(name = "uk_like_user_post", columnNames = {"user_id", "post_id"})
 })
-public class Like {
+public class PostLike {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,9 +26,9 @@ public class Like {
     @JoinColumn(name = "post_id", nullable = false, foreignKey = @ForeignKey(name = "fk_like_post"))
     private Post post;
 
-    public Like() {}
+    public PostLike() {}
 
-    public Like(User user, Post post) {
+    public PostLike(User user, Post post) {
         this.user = user;
         this.post = post;
     }

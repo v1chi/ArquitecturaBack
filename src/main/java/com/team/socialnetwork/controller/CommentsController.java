@@ -121,7 +121,11 @@ public class CommentsController {
         commentRepository.findById(commentId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Comment not found"));
-        commentLikeRepository.deleteByUserIdAndCommentId(user.getId(), commentId);
+        int deleted = commentLikeRepository.deleteByUserIdAndCommentId(user.getId(), commentId);
+        if (deleted == 0) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Not liked yet");
+        }
         return ResponseEntity.ok(new MessageResponse("Comment unliked successfully"));
     }
 }
