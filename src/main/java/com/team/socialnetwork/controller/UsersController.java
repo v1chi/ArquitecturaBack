@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
 import com.team.socialnetwork.dto.ChangePasswordRequest;
-import com.team.socialnetwork.dto.CommentResponse;
 import com.team.socialnetwork.dto.PostResponse;
 import com.team.socialnetwork.dto.SafeUser;
 import com.team.socialnetwork.dto.ChangeUsernameRequest;
@@ -34,7 +33,6 @@ public class UsersController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final PostRepository postRepository;
-    private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
 
     public UsersController(UserRepository userRepository, PasswordEncoder passwordEncoder,
@@ -43,7 +41,6 @@ public class UsersController {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.postRepository = postRepository;
-        this.commentRepository = commentRepository;
         this.commentLikeRepository = commentLikeRepository;
     }
 
@@ -71,6 +68,16 @@ public class UsersController {
         return ResponseEntity.ok(resp);
     }
 
+    // Get a user's public profile
+    @GetMapping("/{userId:\\d+}")
+    public ResponseEntity<SafeUser> getUserById(@PathVariable Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        SafeUser dto = new SafeUser(user.getId(), user.getFullName(), user.getUsername(), user.getEmail(), user.getCreatedAt());
+        return ResponseEntity.ok(dto);
+    }
+
     // List posts of a user
     @GetMapping("/{userId}/posts")
     public ResponseEntity<java.util.List<PostResponse>> listUserPosts(@PathVariable Long userId) {
@@ -85,23 +92,7 @@ public class UsersController {
         return ResponseEntity.ok(resp);
     }
 
-    // List comments for a user's post (verify ownership)
-    @GetMapping("/{userId}/posts/{postId}/comments")
-    public ResponseEntity<java.util.List<CommentResponse>> listCommentsForUserPost(@PathVariable Long userId,
-                                                                                   @PathVariable Long postId) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
-        if (!post.getAuthor().getId().equals(userId)) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST, "Post does not belong to the specified user");
-        }
-        java.util.List<com.team.socialnetwork.entity.Comment> comments = commentRepository.findByPostId(postId);
-        java.util.List<CommentResponse> resp = comments.stream()
-                .map(c -> new CommentResponse(c.getId(), c.getCreatedAt(), c.getText()))
-                .toList();
-        return ResponseEntity.ok(resp);
-    }
+    // Deprecated endpoint removed: comments listing moved to /posts/{postId}/comments
 
     @PatchMapping("/me/password")
     public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> changePassword(

@@ -3,6 +3,7 @@ package com.team.socialnetwork.controller;
 import com.team.socialnetwork.dto.CreatePostRequest;
 import com.team.socialnetwork.dto.CreateCommentRequest;
 import com.team.socialnetwork.dto.PostResponse;
+import com.team.socialnetwork.dto.PostDetailResponse;
 import com.team.socialnetwork.entity.Post;
 import com.team.socialnetwork.entity.User;
 import com.team.socialnetwork.entity.Comment;
@@ -76,6 +77,56 @@ public class PostsController {
         Comment comment = new Comment(request.getText(), post, author);
         commentRepository.save(comment);
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Comment created successfully"));
+    }
+
+    // List comments for a post (no userId required)
+    @org.springframework.web.bind.annotation.GetMapping("/{postId}/comments")
+    public ResponseEntity<java.util.List<com.team.socialnetwork.dto.CommentResponse>> listCommentsForPost(
+            @org.springframework.web.bind.annotation.PathVariable Long postId) {
+        postRepository.findById(postId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        java.util.List<com.team.socialnetwork.entity.Comment> comments = commentRepository.findByPostId(postId);
+        java.util.List<com.team.socialnetwork.dto.CommentResponse> resp = comments.stream()
+                .map(c -> new com.team.socialnetwork.dto.CommentResponse(c.getId(), c.getCreatedAt(), c.getText()))
+                .toList();
+        return ResponseEntity.ok(resp);
+    }
+
+    // Get post detail (with counts and viewer flags)
+    @org.springframework.web.bind.annotation.GetMapping("/{postId:\\d+}")
+    public ResponseEntity<PostDetailResponse> getPost(Authentication authentication,
+                                                      @org.springframework.web.bind.annotation.PathVariable Long postId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User viewer = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+
+        long likesCount = postLikeRepository.countByPostId(postId);
+        long commentsCount = commentRepository.findByPostId(postId).size();
+        boolean viewerLiked = postLikeRepository.existsByUserIdAndPostId(viewer.getId(), postId);
+
+        com.team.socialnetwork.dto.SafeUser authorDto = new com.team.socialnetwork.dto.SafeUser(
+                post.getAuthor().getId(),
+                post.getAuthor().getFullName(),
+                post.getAuthor().getUsername(),
+                post.getAuthor().getEmail(),
+                post.getAuthor().getCreatedAt()
+        );
+
+        PostDetailResponse resp = new PostDetailResponse(
+                post.getId(), post.getCreatedAt(), post.getDescription(), post.getImage(),
+                authorDto, likesCount, commentsCount, viewerLiked
+        );
+        return ResponseEntity.ok(resp);
     }
 
     @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
