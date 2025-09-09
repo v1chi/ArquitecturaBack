@@ -3,6 +3,8 @@ package com.team.socialnetwork.service.mail;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -13,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 
 @Service
 public class MailService {
+    private static final Logger log = LoggerFactory.getLogger(MailService.class);
     private final JavaMailSender mailSender;
 
     @Value("${EMAIL_USER}")
@@ -32,6 +35,8 @@ public class MailService {
         try (var is = resource.getInputStream()) {
             String html = new String(is.readAllBytes(), StandardCharsets.UTF_8);
             String url = apiBaseUrl + "/auth/" + token;
+            // Log the URL for local development to easily copy the token/link
+            log.info("Mail link ({}): {}", name, url);
             return html.replace("{{LINK}}", url);
         }
     }

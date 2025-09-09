@@ -23,8 +23,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .findFirst()
-                .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                .orElse("Validation error");
+                .map(e -> e.getDefaultMessage())
+                .orElseGet(() -> ex.getBindingResult().getGlobalErrors().stream()
+                        .findFirst()
+                        .map(err -> err.getDefaultMessage())
+                        .orElse("Validation error"));
         return build(HttpStatus.BAD_REQUEST, message, "VALIDATION_ERROR");
     }
 
@@ -42,4 +45,3 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(body);
     }
 }
-

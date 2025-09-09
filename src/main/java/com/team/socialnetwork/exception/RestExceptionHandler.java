@@ -21,7 +21,7 @@ public class RestExceptionHandler {
             if (cause.contains("uk_users_email")) {
                 message = "Email already in use";
             } else if (cause.contains("uk_users_name")) {
-                message = "Name already in use";
+                message = "Username already in use";
             }
         }
         Map<String, Object> body = new HashMap<>();
@@ -32,4 +32,3 @@ public class RestExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 }
-

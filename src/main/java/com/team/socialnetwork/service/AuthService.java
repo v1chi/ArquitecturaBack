@@ -40,12 +40,13 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Email already in use");
         }
-        if (userRepository.existsByName(request.getName())) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Name already in use");
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Username already in use");
         }
 
         User user = new User();
-        user.setName(request.getName());
+        user.setUsername(request.getUsername());
+        user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         // Initial state: not verified
@@ -85,7 +86,9 @@ public class AuthService {
         }
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put("name", user.getName());
+        // Expose display name: prefer fullName, fallback to username
+        String displayName = user.getFullName() != null ? user.getFullName() : user.getUsername();
+        claims.put("name", displayName);
         claims.put("userId", user.getId());
 
         String access = jwtService.generateAccessToken(user.getEmail(), claims);

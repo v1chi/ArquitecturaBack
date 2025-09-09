@@ -6,9 +6,11 @@ import com.team.socialnetwork.dto.PostResponse;
 import com.team.socialnetwork.entity.Post;
 import com.team.socialnetwork.entity.User;
 import com.team.socialnetwork.entity.Comment;
+import com.team.socialnetwork.entity.Like;
 import com.team.socialnetwork.repository.PostRepository;
 import com.team.socialnetwork.repository.UserRepository;
 import com.team.socialnetwork.repository.CommentRepository;
+import com.team.socialnetwork.repository.LikeRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,6 +18,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @RestController
 @RequestMapping("/posts")
@@ -24,12 +29,14 @@ public class PostsController {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
+    private final LikeRepository likeRepository;
 
     public PostsController(PostRepository postRepository, UserRepository userRepository,
-                           CommentRepository commentRepository) {
+                           CommentRepository commentRepository, LikeRepository likeRepository) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
+        this.likeRepository = likeRepository;
     }
 
     @PostMapping
@@ -105,5 +112,72 @@ public class PostsController {
                 .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage()))
                 .toList();
         return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping("/{postId}/likes/count")
+    public ResponseEntity<java.util.Map<String, Long>> countPostLikes(@PathVariable Long postId) {
+        postRepository.findById(postId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        long count = likeRepository.countByPostId(postId);
+        java.util.Map<String, Long> body = new java.util.HashMap<>();
+        body.put("count", count);
+        return ResponseEntity.ok(body);
+    }
+
+    @GetMapping("/{postId}/likes")
+    public ResponseEntity<java.util.List<com.team.socialnetwork.dto.SafeUser>> listPostLikes(@PathVariable Long postId,
+                                                                                             @RequestParam(defaultValue = "0") int page,
+                                                                                             @RequestParam(defaultValue = "10") int size) {
+        postRepository.findById(postId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        Page<Like> likes = likeRepository.findByPostId(postId, PageRequest.of(page, size));
+        java.util.List<com.team.socialnetwork.dto.SafeUser> users = likes.getContent().stream().map(l -> {
+            User u = l.getUser();
+            return new com.team.socialnetwork.dto.SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt());
+        }).toList();
+        return ResponseEntity.ok(users);
+    }
+
+    @PostMapping("/{postId}/likes")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> likePost(Authentication authentication,
+                                                                               @PathVariable Long postId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+
+        if (likeRepository.existsByUserIdAndPostId(user.getId(), postId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Already liked");
+        }
+        likeRepository.save(new Like(user, post));
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Post liked successfully"));
+    }
+
+    @DeleteMapping("/{postId}/likes")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> unlikePost(Authentication authentication,
+                                                                                 @PathVariable Long postId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        postRepository.findById(postId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        likeRepository.deleteByUserIdAndPostId(user.getId(), postId);
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Post unliked successfully"));
     }
 }

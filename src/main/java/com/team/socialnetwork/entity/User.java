@@ -9,6 +9,7 @@ import java.util.List;
 @Entity
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(name = "uk_users_email", columnNames = {"email"}),
+        // Keep unique constraint on column "name" (now maps to username) for smooth migration
         @UniqueConstraint(name = "uk_users_name", columnNames = {"name"})
 })
 public class User {
@@ -21,8 +22,13 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(nullable = false, length = 100)
-    private String name;
+    // Map username to existing DB column "name" to avoid a breaking migration
+    @Column(name = "name", nullable = false, length = 100)
+    private String username;
+
+    // New non-unique full name field
+    @Column(name = "full_name", length = 150)
+    private String fullName;
 
     @Column(nullable = false, length = 150)
     private String email;
@@ -44,8 +50,8 @@ public class User {
 
     public User() {}
 
-    public User(String name, String email, String password) {
-        this.name = name;
+    public User(String username, String email, String password) {
+        this.username = username;
         this.email = email;
         this.password = password;
     }
@@ -54,8 +60,10 @@ public class User {
     public void setId(Long id) { this.id = id; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public String getPassword() { return password; }

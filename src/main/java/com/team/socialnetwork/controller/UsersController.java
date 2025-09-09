@@ -9,16 +9,20 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import com.team.socialnetwork.dto.ChangePasswordRequest;
 import com.team.socialnetwork.dto.CommentResponse;
 import com.team.socialnetwork.dto.PostResponse;
 import com.team.socialnetwork.dto.SafeUser;
+import com.team.socialnetwork.dto.ChangeUsernameRequest;
+import com.team.socialnetwork.dto.ChangeNameRequest;
 import com.team.socialnetwork.entity.Post;
 import com.team.socialnetwork.entity.User;
 import com.team.socialnetwork.repository.CommentRepository;
 import com.team.socialnetwork.repository.PostRepository;
 import com.team.socialnetwork.repository.UserRepository;
+import com.team.socialnetwork.repository.CommentLikeRepository;
 
 import jakarta.validation.Valid;
 
@@ -30,13 +34,16 @@ public class UsersController {
     private final PasswordEncoder passwordEncoder;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final CommentLikeRepository commentLikeRepository;
 
     public UsersController(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                           PostRepository postRepository, CommentRepository commentRepository) {
+                           PostRepository postRepository, CommentRepository commentRepository,
+                           CommentLikeRepository commentLikeRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
+        this.commentLikeRepository = commentLikeRepository;
     }
 
     @GetMapping("/me")
@@ -49,7 +56,7 @@ public class UsersController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
-        SafeUser dto = new SafeUser(user.getId(), user.getName(), user.getName(), user.getEmail(), user.getCreatedAt());
+        SafeUser dto = new SafeUser(user.getId(), user.getFullName(), user.getUsername(), user.getEmail(), user.getCreatedAt());
         return ResponseEntity.ok(dto);
     }
 
@@ -58,7 +65,7 @@ public class UsersController {
     public ResponseEntity<java.util.List<SafeUser>> listUsers() {
         java.util.List<User> users = userRepository.findAll();
         java.util.List<SafeUser> resp = users.stream()
-                .map(u -> new SafeUser(u.getId(), u.getName(), u.getName(), u.getEmail(), u.getCreatedAt()))
+                .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt()))
                 .toList();
         return ResponseEntity.ok(resp);
     }
@@ -127,10 +134,10 @@ public class UsersController {
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Password updated successfully"));
     }
 
-    @PatchMapping("/me/name")
-    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> changeName(
+    @PatchMapping("/me/username")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> changeUsername(
             Authentication authentication,
-            @Valid @RequestBody com.team.socialnetwork.dto.ChangeNameRequest request
+            @Valid @RequestBody ChangeUsernameRequest request
     ) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new org.springframework.web.server.ResponseStatusException(
@@ -142,19 +149,65 @@ public class UsersController {
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
 
-        String newName = request.getName();
-        if (newName.equals(user.getName())) {
+        String newUsername = request.getUsername();
+        if (newUsername.equals(user.getUsername())) {
             throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST, "New name must be different from the current one");
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "New username must be different from the current one");
         }
 
-        if (userRepository.existsByName(newName)) {
+        if (userRepository.existsByUsername(newUsername)) {
             throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.CONFLICT, "Name already in use");
+                    org.springframework.http.HttpStatus.CONFLICT, "Username already in use");
         }
 
-        user.setName(newName);
+        user.setUsername(newUsername);
         userRepository.save(user);
-        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Name updated successfully"));
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Username updated successfully"));
+    }
+
+    // Optional: allow changing non-unique full name
+    @PatchMapping("/me/full-name")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> changeFullName(
+            Authentication authentication,
+            @Valid @RequestBody ChangeNameRequest request
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        String newFullName = request.getName();
+        if (newFullName.equals(user.getFullName())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "New full name must be different from the current one");
+        }
+
+        user.setFullName(newFullName);
+        userRepository.save(user);
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Full name updated successfully"));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> deleteAccount(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        // Ensure comment likes (not mapped in entity) are removed first
+        commentLikeRepository.deleteByUserId(user.getId());
+
+        userRepository.delete(user);
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Account deleted successfully"));
     }
 }

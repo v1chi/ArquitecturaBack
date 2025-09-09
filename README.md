@@ -1,24 +1,31 @@
-# Social Network Backend (Spring Boot)
+# Social Network Backend
 
 Minimal Spring Boot backend with JWT authentication and PostgreSQL.
 
 ## Stack
+
 - Spring Boot 3 (Java 17)
 - Spring Security + JWT
 - Spring Data JPA + PostgreSQL
 
 ## Quick Start (Docker)
-1) Copy env file
-```bash
-cp .env.example .env
-```
-2) Start services
+
 ```bash
 docker compose up --build -d
 ```
+
 - App: http://localhost:8080
 
+## Stop (Docker)
+
+```bash
+docker compose down
+```
+
+Tip: use `docker compose stop` to stop without removing networks/containers.
+
 ## Run Locally
+
 - Requirements: Java 17, Maven, PostgreSQL
 - Ensure a DB exists that matches `.env`
 ```bash
@@ -26,6 +33,7 @@ mvn spring-boot:run
 ```
 
 ## Environment
+
 Set in `.env`:
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 - `JWT_SECRET` (64+ chars)
@@ -40,8 +48,11 @@ Set in `.env`:
 - Use header: `Authorization: Bearer <access_token>`
 
 ## Reset Database (Docker)
+
+With containers stopped, remove the PostgreSQL data volume:
+
 ```bash
-docker compose down
 docker volume rm backend_db_data
-docker compose up -d
 ```
+
+Then start the stack again using the Start/Stop commands above.
