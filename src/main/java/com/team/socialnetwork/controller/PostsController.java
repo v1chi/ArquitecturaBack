@@ -74,6 +74,13 @@ public class PostsController {
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
 
+        // Enforce privacy: if post's author is private, only the author themselves or their followers can comment
+        User postAuthor = post.getAuthor();
+        if (postAuthor.isPrivate() && !postAuthor.getId().equals(author.getId()) && !author.getFollowing().contains(postAuthor)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
+
         Comment comment = new Comment(request.getText(), post, author);
         commentRepository.save(comment);
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Comment created successfully"));
@@ -82,10 +89,24 @@ public class PostsController {
     // List comments for a post (no userId required)
     @org.springframework.web.bind.annotation.GetMapping("/{postId}/comments")
     public ResponseEntity<java.util.List<com.team.socialnetwork.dto.CommentResponse>> listCommentsForPost(
+            Authentication authentication,
             @org.springframework.web.bind.annotation.PathVariable Long postId) {
-        postRepository.findById(postId)
+        Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User viewer = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        User author = post.getAuthor();
+        if (author.isPrivate() && !author.getId().equals(viewer.getId()) && !viewer.getFollowing().contains(author)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
         java.util.List<com.team.socialnetwork.entity.Comment> comments = commentRepository.findByPostId(postId);
         java.util.List<com.team.socialnetwork.dto.CommentResponse> resp = comments.stream()
                 .map(c -> new com.team.socialnetwork.dto.CommentResponse(c.getId(), c.getCreatedAt(), c.getText()))
@@ -109,6 +130,11 @@ public class PostsController {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        User author = post.getAuthor();
+        if (author.isPrivate() && !author.getId().equals(viewer.getId()) && !viewer.getFollowing().contains(author)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
 
         long likesCount = postLikeRepository.countByPostId(postId);
         long commentsCount = commentRepository.findByPostId(postId).size();
@@ -166,10 +192,24 @@ public class PostsController {
     }
 
     @GetMapping("/{postId}/likes/count")
-    public ResponseEntity<java.util.Map<String, Long>> countPostLikes(@PathVariable Long postId) {
-        postRepository.findById(postId)
+    public ResponseEntity<java.util.Map<String, Long>> countPostLikes(Authentication authentication,
+                                                                      @PathVariable Long postId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User viewer = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        User author = post.getAuthor();
+        if (author.isPrivate() && !author.getId().equals(viewer.getId()) && !viewer.getFollowing().contains(author)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
         long count = postLikeRepository.countByPostId(postId);
         java.util.Map<String, Long> body = new java.util.HashMap<>();
         body.put("count", count);
@@ -177,12 +217,26 @@ public class PostsController {
     }
 
     @GetMapping("/{postId}/likes")
-    public ResponseEntity<java.util.List<com.team.socialnetwork.dto.SafeUser>> listPostLikes(@PathVariable Long postId,
+    public ResponseEntity<java.util.List<com.team.socialnetwork.dto.SafeUser>> listPostLikes(Authentication authentication,
+                                                                                             @PathVariable Long postId,
                                                                                              @RequestParam(defaultValue = "0") int page,
                                                                                              @RequestParam(defaultValue = "10") int size) {
-        postRepository.findById(postId)
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User viewer = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        User author = post.getAuthor();
+        if (author.isPrivate() && !author.getId().equals(viewer.getId()) && !viewer.getFollowing().contains(author)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
         Page<PostLike> likes = postLikeRepository.findByPostId(postId, PageRequest.of(page, size));
         java.util.List<com.team.socialnetwork.dto.SafeUser> users = likes.getContent().stream().map(l -> {
             User u = l.getUser();
@@ -206,6 +260,11 @@ public class PostsController {
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
 
+        User author = post.getAuthor();
+        if (author.isPrivate() && !author.getId().equals(user.getId()) && !user.getFollowing().contains(author)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
         if (postLikeRepository.existsByUserIdAndPostId(user.getId(), postId)) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "Already liked");
@@ -225,9 +284,14 @@ public class PostsController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
-        postRepository.findById(postId)
+        Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        User author = post.getAuthor();
+        if (author.isPrivate() && !author.getId().equals(user.getId()) && !user.getFollowing().contains(author)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
         int deleted = postLikeRepository.deleteByUserIdAndPostId(user.getId(), postId);
         if (deleted == 0) {
             throw new org.springframework.web.server.ResponseStatusException(

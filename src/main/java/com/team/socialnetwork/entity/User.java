@@ -21,11 +21,9 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    // Map username to existing DB column "name" to avoid a breaking migration
     @Column(name = "name", nullable = false, length = 100)
     private String username;
 
-    // New non-unique full name field
     @Column(name = "full_name", length = 150)
     private String fullName;
 
@@ -37,6 +35,9 @@ public class User {
 
     @Column(name = "email_confirmed", nullable = false, columnDefinition = "boolean not null default false")
     private boolean emailConfirmed = false;
+
+    @Column(name = "is_private", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean isPrivate = false;
 
     @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Post> posts = new ArrayList<>();
@@ -82,6 +83,8 @@ public class User {
     public void setPassword(String password) { this.password = password; }
     public boolean isEmailConfirmed() { return emailConfirmed; }
     public void setEmailConfirmed(boolean emailConfirmed) { this.emailConfirmed = emailConfirmed; }
+    public boolean isPrivate() { return isPrivate; }
+    public void setPrivate(boolean aPrivate) { isPrivate = aPrivate; }
     public List<Post> getPosts() { return posts; }
     public void setPosts(List<Post> posts) { this.posts = posts; }
     public List<Comment> getComments() { return comments; }

@@ -16,12 +16,16 @@
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/PerformPasswordResetRequest.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/PostDetailResponse.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/PostResponse.java
+/home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/PublicUserResponse.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/RegisterRequest.java
+/home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/RelationshipResponse.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/SafeUser.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/TokenResponse.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/UpdateProfileRequest.java
+/home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/dto/UpdateVisibilityRequest.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/entity/Comment.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/entity/CommentLike.java
+/home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/entity/FollowRequest.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/entity/Post.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/entity/PostLike.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/entity/User.java
@@ -30,6 +34,7 @@
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/jobs/UnconfirmedUserCleanup.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/repository/CommentLikeRepository.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/repository/CommentRepository.java
+/home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/repository/FollowRequestRepository.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/repository/PostLikeRepository.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/repository/PostRepository.java
 /home/benlox/semester/arquitectura-de-sistemas/backend/src/main/java/com/team/socialnetwork/repository/UserRepository.java

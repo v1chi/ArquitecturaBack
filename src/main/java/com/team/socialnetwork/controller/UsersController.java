@@ -15,15 +15,20 @@ import org.springframework.web.bind.annotation.PostMapping;
 import com.team.socialnetwork.dto.ChangePasswordRequest;
 import com.team.socialnetwork.dto.PostResponse;
 import com.team.socialnetwork.dto.SafeUser;
+import com.team.socialnetwork.dto.PublicUserResponse;
 import com.team.socialnetwork.dto.ChangeUsernameRequest;
 import com.team.socialnetwork.dto.ChangeNameRequest;
 import com.team.socialnetwork.dto.UpdateProfileRequest;
+import com.team.socialnetwork.dto.UpdateVisibilityRequest;
+import com.team.socialnetwork.dto.RelationshipResponse;
 import com.team.socialnetwork.entity.Post;
 import com.team.socialnetwork.entity.User;
 import com.team.socialnetwork.repository.CommentRepository;
 import com.team.socialnetwork.repository.PostRepository;
 import com.team.socialnetwork.repository.UserRepository;
 import com.team.socialnetwork.repository.CommentLikeRepository;
+import com.team.socialnetwork.repository.FollowRequestRepository;
+import com.team.socialnetwork.entity.FollowRequest;
 
 import jakarta.validation.Valid;
 
@@ -35,18 +40,51 @@ public class UsersController {
     private final PasswordEncoder passwordEncoder;
     private final PostRepository postRepository;
     private final CommentLikeRepository commentLikeRepository;
+    private final FollowRequestRepository followRequestRepository;
 
     public UsersController(UserRepository userRepository, PasswordEncoder passwordEncoder,
                            PostRepository postRepository, CommentRepository commentRepository,
-                           CommentLikeRepository commentLikeRepository) {
+                           CommentLikeRepository commentLikeRepository,
+                           FollowRequestRepository followRequestRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.postRepository = postRepository;
         this.commentLikeRepository = commentLikeRepository;
+        this.followRequestRepository = followRequestRepository;
+    }
+
+    // Update my visibility (public/private)
+    @PatchMapping("/me/visibility")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> updateVisibility(
+            Authentication authentication,
+            @RequestBody UpdateVisibilityRequest request
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        if (request.getIsPrivate() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "isPrivate is required");
+        }
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        boolean requestedPrivate = Boolean.TRUE.equals(request.getIsPrivate());
+        if (user.isPrivate() == requestedPrivate) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Visibility is already set to " + (requestedPrivate ? "private" : "public")
+            );
+        }
+        user.setPrivate(requestedPrivate);
+        userRepository.save(user);
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Visibility updated"));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<SafeUser> me(Authentication authentication) {
+    public ResponseEntity<PublicUserResponse> me(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
@@ -55,7 +93,12 @@ public class UsersController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
-        SafeUser dto = new SafeUser(user.getId(), user.getFullName(), user.getUsername(), user.getEmail(), user.getCreatedAt());
+        long followersCount = user.getFollowers().size();
+        long followingCount = user.getFollowing().size();
+        PublicUserResponse dto = new PublicUserResponse(
+                user.getId(), user.getFullName(), user.getUsername(), user.getEmail(), user.getCreatedAt(),
+                followersCount, followingCount, user.isPrivate()
+        );
         return ResponseEntity.ok(dto);
     }
 
@@ -83,9 +126,19 @@ public class UsersController {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "Already following");
         }
-        me.getFollowing().add(target);
-        userRepository.save(me);
-        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Followed successfully"));
+        if (target.isPrivate()) {
+            if (followRequestRepository.existsByFollowerIdAndTargetId(me.getId(), target.getId())) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT, "Follow request already sent");
+            }
+            followRequestRepository.save(new FollowRequest(me, target));
+            return ResponseEntity.status(org.springframework.http.HttpStatus.ACCEPTED)
+                    .body(new com.team.socialnetwork.dto.MessageResponse("Follow request sent"));
+        } else {
+            me.getFollowing().add(target);
+            userRepository.save(me);
+            return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Followed successfully"));
+        }
     }
 
     // Unfollow a user
@@ -106,12 +159,67 @@ public class UsersController {
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
 
         if (!me.getFollowing().contains(target)) {
+            // If there is a pending request, allow cancel by deleting it
+            java.util.Optional<FollowRequest> fr = followRequestRepository.findByFollowerIdAndTargetId(me.getId(), target.getId());
+            if (fr.isPresent()) {
+                followRequestRepository.delete(fr.get());
+                return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follow request canceled"));
+            }
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "Not following yet");
         }
         me.getFollowing().remove(target);
         userRepository.save(me);
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Unfollowed successfully"));
+    }
+
+    // Approve a follow request from {userId} to me
+    @PostMapping("/{userId}/follow/approve")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> approveFollow(Authentication authentication,
+                                                                                    @PathVariable Long userId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User me = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        User follower = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Follower not found"));
+
+        FollowRequest fr = followRequestRepository.findByFollowerIdAndTargetId(follower.getId(), me.getId())
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Follow request not found"));
+        followRequestRepository.delete(fr);
+        // Create following relation
+        follower.getFollowing().add(me);
+        userRepository.save(follower);
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follow request approved"));
+    }
+
+    // Reject a follow request from {userId} to me
+    @PostMapping("/{userId}/follow/reject")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> rejectFollow(Authentication authentication,
+                                                                                   @PathVariable Long userId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User me = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        User follower = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Follower not found"));
+
+        FollowRequest fr = followRequestRepository.findByFollowerIdAndTargetId(follower.getId(), me.getId())
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Follow request not found"));
+        followRequestRepository.delete(fr);
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follow request rejected"));
     }
 
     // List all users (safe data)
@@ -126,11 +234,16 @@ public class UsersController {
 
     // Get a user's public profile
     @GetMapping("/{userId:\\d+}")
-    public ResponseEntity<SafeUser> getUserById(@PathVariable Long userId) {
+    public ResponseEntity<PublicUserResponse> getUserById(@PathVariable Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
-        SafeUser dto = new SafeUser(user.getId(), user.getFullName(), user.getUsername(), user.getEmail(), user.getCreatedAt());
+        long followersCount = user.getFollowers().size();
+        long followingCount = user.getFollowing().size();
+        PublicUserResponse dto = new PublicUserResponse(
+                user.getId(), user.getFullName(), user.getUsername(), user.getEmail(), user.getCreatedAt(),
+                followersCount, followingCount, user.isPrivate()
+        );
         return ResponseEntity.ok(dto);
     }
 
@@ -158,6 +271,29 @@ public class UsersController {
         return ResponseEntity.ok(resp);
     }
 
+    // Relationship between authenticated user and {userId}
+    @GetMapping("/{userId}/relationship")
+    public ResponseEntity<RelationshipResponse> relationship(Authentication authentication,
+                                                            @PathVariable Long userId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User me = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        User target = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Target user not found"));
+
+        boolean following = me.getFollowing().contains(target);
+        boolean followsYou = target.getFollowing().contains(me);
+        boolean requested = followRequestRepository.existsByFollowerIdAndTargetId(me.getId(), target.getId());
+        boolean blocked = false; // not implemented yet
+        return ResponseEntity.ok(new RelationshipResponse(following, followsYou, requested, blocked));
+    }
+
     // Count followers of a user
     @GetMapping("/{userId}/followers/count")
     public ResponseEntity<java.util.Map<String, Long>> countFollowers(@PathVariable Long userId) {
@@ -182,14 +318,26 @@ public class UsersController {
         return ResponseEntity.ok(body);
     }
 
-    // List posts of a user
+    // List posts of a user (respect privacy)
     @GetMapping("/{userId}/posts")
-    public ResponseEntity<java.util.List<PostResponse>> listUserPosts(@PathVariable Long userId) {
-        // ensure user exists (optional but clearer errors)
-        userRepository.findById(userId)
+    public ResponseEntity<java.util.List<PostResponse>> listUserPosts(Authentication authentication,
+                                                                      @PathVariable Long userId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User me = userRepository.findByEmail(email)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
-        java.util.List<Post> posts = postRepository.findByAuthorId(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        if (user.isPrivate() && !user.getId().equals(me.getId()) && !me.getFollowing().contains(user)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
+        java.util.List<Post> posts = postRepository.findByAuthorId(user.getId());
         java.util.List<PostResponse> resp = posts.stream()
                 .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage()))
                 .toList();
