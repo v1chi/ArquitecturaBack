@@ -1,27 +1,32 @@
 package com.team.socialnetwork.controller;
 
-import com.team.socialnetwork.dto.CreatePostRequest;
-import com.team.socialnetwork.dto.CreateCommentRequest;
-import com.team.socialnetwork.dto.PostResponse;
-import com.team.socialnetwork.dto.PostDetailResponse;
-import com.team.socialnetwork.entity.Post;
-import com.team.socialnetwork.entity.User;
-import com.team.socialnetwork.entity.Comment;
-import com.team.socialnetwork.entity.PostLike;
-import com.team.socialnetwork.repository.PostRepository;
-import com.team.socialnetwork.repository.UserRepository;
-import com.team.socialnetwork.repository.CommentRepository;
-import com.team.socialnetwork.repository.PostLikeRepository;
-import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+
+import com.team.socialnetwork.dto.CreateCommentRequest;
+import com.team.socialnetwork.dto.CreatePostRequest;
+import com.team.socialnetwork.dto.PostDetailResponse;
+import com.team.socialnetwork.dto.PostResponse;
+import com.team.socialnetwork.entity.Comment;
+import com.team.socialnetwork.entity.Post;
+import com.team.socialnetwork.entity.PostLike;
+import com.team.socialnetwork.entity.User;
+import com.team.socialnetwork.repository.CommentRepository;
+import com.team.socialnetwork.repository.PostLikeRepository;
+import com.team.socialnetwork.repository.PostRepository;
+import com.team.socialnetwork.repository.UserRepository;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/posts")
@@ -109,7 +114,7 @@ public class PostsController {
         }
         java.util.List<com.team.socialnetwork.entity.Comment> comments = commentRepository.findByPostId(postId);
         java.util.List<com.team.socialnetwork.dto.CommentResponse> resp = comments.stream()
-                .map(c -> new com.team.socialnetwork.dto.CommentResponse(c.getId(), c.getCreatedAt(), c.getText()))
+                .map(c -> new com.team.socialnetwork.dto.CommentResponse(c.getId(), c.getCreatedAt(), c.getText(), c.getAuthor().getUsername()))
                 .toList();
         return ResponseEntity.ok(resp);
     }
@@ -186,7 +191,7 @@ public class PostsController {
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
         java.util.List<Post> posts = postRepository.findByAuthorId(me.getId());
         java.util.List<PostResponse> resp = posts.stream()
-                .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage()))
+                .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage(), p.getAuthor().getUsername()))
                 .toList();
         return ResponseEntity.ok(resp);
     }

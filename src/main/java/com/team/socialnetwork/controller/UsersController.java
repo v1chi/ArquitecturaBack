@@ -3,32 +3,32 @@ package com.team.socialnetwork.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 
-import com.team.socialnetwork.dto.ChangePasswordRequest;
-import com.team.socialnetwork.dto.PostResponse;
-import com.team.socialnetwork.dto.SafeUser;
-import com.team.socialnetwork.dto.PublicUserResponse;
-import com.team.socialnetwork.dto.ChangeUsernameRequest;
 import com.team.socialnetwork.dto.ChangeNameRequest;
+import com.team.socialnetwork.dto.ChangePasswordRequest;
+import com.team.socialnetwork.dto.ChangeUsernameRequest;
+import com.team.socialnetwork.dto.PostResponse;
+import com.team.socialnetwork.dto.PublicUserResponse;
+import com.team.socialnetwork.dto.RelationshipResponse;
+import com.team.socialnetwork.dto.SafeUser;
 import com.team.socialnetwork.dto.UpdateProfileRequest;
 import com.team.socialnetwork.dto.UpdateVisibilityRequest;
-import com.team.socialnetwork.dto.RelationshipResponse;
+import com.team.socialnetwork.entity.FollowRequest;
 import com.team.socialnetwork.entity.Post;
 import com.team.socialnetwork.entity.User;
+import com.team.socialnetwork.repository.CommentLikeRepository;
 import com.team.socialnetwork.repository.CommentRepository;
+import com.team.socialnetwork.repository.FollowRequestRepository;
 import com.team.socialnetwork.repository.PostRepository;
 import com.team.socialnetwork.repository.UserRepository;
-import com.team.socialnetwork.repository.CommentLikeRepository;
-import com.team.socialnetwork.repository.FollowRequestRepository;
-import com.team.socialnetwork.entity.FollowRequest;
 
 import jakarta.validation.Valid;
 
@@ -339,7 +339,7 @@ public class UsersController {
         }
         java.util.List<Post> posts = postRepository.findByAuthorId(user.getId());
         java.util.List<PostResponse> resp = posts.stream()
-                .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage()))
+                .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage(), p.getAuthor().getUsername()))
                 .toList();
         return ResponseEntity.ok(resp);
     }

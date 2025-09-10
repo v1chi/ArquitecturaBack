@@ -7,14 +7,16 @@ public class PostResponse {
     private Instant createdAt;
     private String description;
     private String image;
+    private String username;
 
     public PostResponse() {}
 
-    public PostResponse(Long id, Instant createdAt, String description, String image) {
+    public PostResponse(Long id, Instant createdAt, String description, String image, String username) {
         this.id = id;
         this.createdAt = createdAt;
         this.description = description;
         this.image = image;
+        this.username = username;
     }
 
     public Long getId() { return id; }
@@ -25,5 +27,7 @@ public class PostResponse {
     public void setDescription(String description) { this.description = description; }
     public String getImage() { return image; }
     public void setImage(String image) { this.image = image; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 }
 
