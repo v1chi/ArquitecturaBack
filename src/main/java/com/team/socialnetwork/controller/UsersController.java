@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 
 import com.team.socialnetwork.dto.ChangePasswordRequest;
 import com.team.socialnetwork.dto.PostResponse;
@@ -58,6 +59,61 @@ public class UsersController {
         return ResponseEntity.ok(dto);
     }
 
+    // Follow a user
+    @PostMapping("/{userId}/follow")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> follow(Authentication authentication,
+                                                                             @PathVariable Long userId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User me = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        if (me.getId().equals(userId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "You cannot follow yourself");
+        }
+        User target = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        if (me.getFollowing().contains(target)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Already following");
+        }
+        me.getFollowing().add(target);
+        userRepository.save(me);
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Followed successfully"));
+    }
+
+    // Unfollow a user
+    @DeleteMapping("/{userId}/follow")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> unfollow(Authentication authentication,
+                                                                               @PathVariable Long userId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User me = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        User target = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        if (!me.getFollowing().contains(target)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Not following yet");
+        }
+        me.getFollowing().remove(target);
+        userRepository.save(me);
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Unfollowed successfully"));
+    }
+
     // List all users (safe data)
     @GetMapping
     public ResponseEntity<java.util.List<SafeUser>> listUsers() {
@@ -76,6 +132,54 @@ public class UsersController {
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
         SafeUser dto = new SafeUser(user.getId(), user.getFullName(), user.getUsername(), user.getEmail(), user.getCreatedAt());
         return ResponseEntity.ok(dto);
+    }
+
+    // List followers of a user
+    @GetMapping("/{userId}/followers")
+    public ResponseEntity<java.util.List<SafeUser>> listFollowers(@PathVariable Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        java.util.List<SafeUser> resp = user.getFollowers().stream()
+                .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt()))
+                .toList();
+        return ResponseEntity.ok(resp);
+    }
+
+    // List following of a user
+    @GetMapping("/{userId}/following")
+    public ResponseEntity<java.util.List<SafeUser>> listFollowing(@PathVariable Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        java.util.List<SafeUser> resp = user.getFollowing().stream()
+                .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt()))
+                .toList();
+        return ResponseEntity.ok(resp);
+    }
+
+    // Count followers of a user
+    @GetMapping("/{userId}/followers/count")
+    public ResponseEntity<java.util.Map<String, Long>> countFollowers(@PathVariable Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        long count = user.getFollowers().size();
+        java.util.Map<String, Long> body = new java.util.HashMap<>();
+        body.put("count", count);
+        return ResponseEntity.ok(body);
+    }
+
+    // Count following of a user
+    @GetMapping("/{userId}/following/count")
+    public ResponseEntity<java.util.Map<String, Long>> countFollowing(@PathVariable Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        long count = user.getFollowing().size();
+        java.util.Map<String, Long> body = new java.util.HashMap<>();
+        body.put("count", count);
+        return ResponseEntity.ok(body);
     }
 
     // List posts of a user

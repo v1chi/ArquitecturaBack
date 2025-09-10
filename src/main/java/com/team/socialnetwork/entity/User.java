@@ -3,8 +3,7 @@ package com.team.socialnetwork.entity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Entity
 @Table(name = "users", uniqueConstraints = {
@@ -48,6 +47,19 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostLike> likes = new ArrayList<>();
 
+    // Users this user is following (owning side)
+    @ManyToMany
+    @JoinTable(
+            name = "user_following",
+            joinColumns = @JoinColumn(name = "follower_id"),
+            inverseJoinColumns = @JoinColumn(name = "followed_id")
+    )
+    private Set<User> following = new HashSet<>();
+
+    // Users that follow this user (inverse side)
+    @ManyToMany(mappedBy = "following")
+    private Set<User> followers = new HashSet<>();
+
     public User() {}
 
     public User(String username, String email, String password) {
@@ -76,4 +88,8 @@ public class User {
     public void setComments(List<Comment> comments) { this.comments = comments; }
     public List<PostLike> getLikes() { return likes; }
     public void setLikes(List<PostLike> likes) { this.likes = likes; }
+    public Set<User> getFollowing() { return following; }
+    public void setFollowing(Set<User> following) { this.following = following; }
+    public Set<User> getFollowers() { return followers; }
+    public void setFollowers(Set<User> followers) { this.followers = followers; }
 }
