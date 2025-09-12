@@ -182,4 +182,34 @@ public class CommentsController {
         }
         return ResponseEntity.ok(new MessageResponse("Comment unliked successfully"));
     }
+
+    @GetMapping("/{commentId}/likes/check")
+    public ResponseEntity<Map<String, Boolean>> checkCommentLike(Authentication authentication,
+                                                                @PathVariable Long commentId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        
+        // 404 if comment doesn't exist
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Comment not found"));
+        
+        // Check privacy permissions
+        User postAuthor = comment.getPost().getAuthor();
+        if (postAuthor.isPrivate() && !postAuthor.getId().equals(user.getId()) && !user.getFollowing().contains(postAuthor)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
+
+        boolean isLiked = commentLikeRepository.existsByUserIdAndCommentId(user.getId(), commentId);
+        Map<String, Boolean> response = new HashMap<>();
+        response.put("liked", isLiked);
+        return ResponseEntity.ok(response);
+    }
 }

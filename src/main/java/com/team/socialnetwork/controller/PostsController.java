@@ -304,4 +304,34 @@ public class PostsController {
         }
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Post unliked successfully"));
     }
+
+    @GetMapping("/{postId}/likes/check")
+    public ResponseEntity<java.util.Map<String, Boolean>> checkPostLike(Authentication authentication,
+                                                                        @PathVariable Long postId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        
+        // 404 if post doesn't exist
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Post not found"));
+        
+        // Check privacy permissions
+        User author = post.getAuthor();
+        if (author.isPrivate() && !author.getId().equals(user.getId()) && !user.getFollowing().contains(author)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+        }
+
+        boolean isLiked = postLikeRepository.existsByUserIdAndPostId(user.getId(), postId);
+        java.util.Map<String, Boolean> response = new java.util.HashMap<>();
+        response.put("liked", isLiked);
+        return ResponseEntity.ok(response);
+    }
 }
