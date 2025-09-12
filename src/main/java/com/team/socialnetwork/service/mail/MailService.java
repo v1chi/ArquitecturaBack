@@ -24,30 +24,36 @@ public class MailService {
     @Value("${API_BASE_URL:http://localhost:8080}")
     private String apiBaseUrl;
 
+    @Value("${frontend.base.url:http://localhost:5173}")
+    private String frontendBaseUrl;
+
     public MailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
-    private String loadTemplate(String name, String token) throws IOException {
+    private String loadTemplate(String name, String link) throws IOException {
         String templatePath = "mail/templates/" + name;
         ClassPathResource resource = new ClassPathResource(templatePath);
         // Read resource safely inside a JAR
         try (var is = resource.getInputStream()) {
             String html = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            String url = apiBaseUrl + "/auth/" + token;
             // Log the URL for local development to easily copy the token/link
-            log.info("Mail link ({}): {}", name, url);
-            return html.replace("{{LINK}}", url);
+            log.info("Mail link ({}): {}", name, link);
+            return html.replace("{{LINK}}", link);
         }
     }
 
     public void sendConfirmationEmail(String to, String token) throws MessagingException, IOException {
-        String html = loadTemplate("confirm-email.html", "confirm-email?token=" + token);
+        // For email confirmation, we use the frontend URL so users can confirm their account in the UI
+        String confirmationUrl = frontendBaseUrl + "/confirm-email?token=" + token;
+        String html = loadTemplate("confirm-email.html", confirmationUrl);
         sendEmail(to, "✅ Confirm your account", html);
     }
 
     public void sendPasswordReset(String to, String token) throws MessagingException, IOException {
-        String html = loadTemplate("reset-password.html", "reset-password?token=" + token);
+        // For password reset, we use the frontend URL so users can reset their password in the UI
+        String resetUrl = frontendBaseUrl + "/reset-password?token=" + token;
+        String html = loadTemplate("reset-password.html", resetUrl);
         sendEmail(to, "🔐 Reset your SocialNetwork password", html);
     }
 
