@@ -46,4 +46,8 @@ public class Message {
     public Instant getCreatedAt() { return createdAt; }
     public boolean isRead() { return isRead; }
     public void setRead(boolean read) { isRead = read; }
+    public void setSender(User sender) { this.sender = sender; }
+    public void setReceiver(User receiver) { this.receiver = receiver; }
+    public void setContent(String content) { this.content = content; }
+
 }
