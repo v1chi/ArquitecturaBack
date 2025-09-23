@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.team.socialnetwork.dto.ChangeNameRequest;
@@ -224,8 +225,12 @@ public class UsersController {
 
     // List all users (safe data)
     @GetMapping
-    public ResponseEntity<java.util.List<SafeUser>> listUsers() {
-        java.util.List<User> users = userRepository.findAll();
+    public ResponseEntity<java.util.List<SafeUser>> listUsers(@RequestParam(name = "q") String query) {
+        if (query == null || query.trim().isEmpty()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Query parameter 'q' is required");
+        }
+        java.util.List<User> users = userRepository.searchByTerm(query.trim());
         java.util.List<SafeUser> resp = users.stream()
                 .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt()))
                 .toList();

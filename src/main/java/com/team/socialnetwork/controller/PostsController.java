@@ -2,6 +2,7 @@ package com.team.socialnetwork.controller;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +26,13 @@ import com.team.socialnetwork.repository.CommentRepository;
 import com.team.socialnetwork.repository.PostLikeRepository;
 import com.team.socialnetwork.repository.PostRepository;
 import com.team.socialnetwork.repository.UserRepository;
+import com.team.socialnetwork.repository.projection.PostIdCountProjection;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import jakarta.validation.Valid;
 
@@ -194,6 +202,92 @@ public class PostsController {
                 .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage(), p.getAuthor().getUsername()))
                 .toList();
         return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping("/feed")
+    public ResponseEntity<java.util.List<PostDetailResponse>> feed(Authentication authentication,
+                                                                   @RequestParam(defaultValue = "0") int page,
+                                                                   @RequestParam(defaultValue = "10") int size) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        if (page < 0) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "page must be >= 0");
+        }
+        if (size < 1) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "size must be >= 1");
+        }
+        int pageSize = Math.min(size, 50);
+
+        String email = authentication.getName();
+        User me = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        Set<User> following = me.getFollowing();
+        if (following.isEmpty()) {
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
+
+        List<Long> authorIds = following.stream()
+                .map(User::getId)
+                .toList();
+
+        Page<Post> postsPage = postRepository.findByAuthorIdIn(
+                authorIds,
+                PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+
+        List<Post> posts = postsPage.getContent();
+        if (posts.isEmpty()) {
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
+
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+
+        Map<Long, Long> likesPerPost = new HashMap<>();
+        for (PostIdCountProjection row : postLikeRepository.countByPostIds(postIds)) {
+            if (row != null && row.getPostId() != null && row.getCnt() != null) {
+                likesPerPost.put(row.getPostId(), row.getCnt());
+            }
+        }
+
+        Map<Long, Long> commentsPerPost = new HashMap<>();
+        for (PostIdCountProjection row : commentRepository.countByPostIds(postIds)) {
+            if (row != null && row.getPostId() != null && row.getCnt() != null) {
+                commentsPerPost.put(row.getPostId(), row.getCnt());
+            }
+        }
+
+        Set<Long> likedByViewer = new HashSet<>(postLikeRepository.findPostIdsLikedByUser(me.getId(), postIds));
+
+        List<PostDetailResponse> feed = posts.stream().map(post -> {
+            com.team.socialnetwork.dto.SafeUser authorDto = new com.team.socialnetwork.dto.SafeUser(
+                    post.getAuthor().getId(),
+                    post.getAuthor().getFullName(),
+                    post.getAuthor().getUsername(),
+                    post.getAuthor().getEmail(),
+                    post.getAuthor().getCreatedAt()
+            );
+            long likes = likesPerPost.getOrDefault(post.getId(), 0L);
+            long comments = commentsPerPost.getOrDefault(post.getId(), 0L);
+            boolean viewerLiked = likedByViewer.contains(post.getId());
+            return new PostDetailResponse(
+                    post.getId(),
+                    post.getCreatedAt(),
+                    post.getDescription(),
+                    post.getImage(),
+                    authorDto,
+                    likes,
+                    comments,
+                    viewerLiked
+            );
+        }).toList();
+
+        return ResponseEntity.ok(feed);
     }
 
     @GetMapping("/{postId}/likes/count")
