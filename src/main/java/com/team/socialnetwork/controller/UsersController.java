@@ -344,8 +344,8 @@ public class UsersController {
         }
         java.util.List<Post> posts = postRepository.findByAuthorId(user.getId());
         java.util.List<PostResponse> resp = posts.stream()
-                .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage(), p.getAuthor().getUsername()))
-                .toList();
+                .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage(), p.getAuthor().getUsername(), p.getAuthor().getId()))
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(resp);
     }
 

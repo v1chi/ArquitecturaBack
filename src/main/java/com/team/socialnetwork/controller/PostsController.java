@@ -1,5 +1,11 @@
 package com.team.socialnetwork.controller;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -27,12 +33,6 @@ import com.team.socialnetwork.repository.PostLikeRepository;
 import com.team.socialnetwork.repository.PostRepository;
 import com.team.socialnetwork.repository.UserRepository;
 import com.team.socialnetwork.repository.projection.PostIdCountProjection;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import jakarta.validation.Valid;
 
@@ -199,8 +199,15 @@ public class PostsController {
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
         java.util.List<Post> posts = postRepository.findByAuthorId(me.getId());
         java.util.List<PostResponse> resp = posts.stream()
-                .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage(), p.getAuthor().getUsername()))
-                .toList();
+                .map(p -> new PostResponse(
+                        p.getId(),
+                        p.getCreatedAt(),
+                        p.getDescription(),
+                        p.getImage(),
+                        p.getAuthor().getUsername(),
+                        p.getAuthor().getId()
+                ))
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(resp);
     }
 
