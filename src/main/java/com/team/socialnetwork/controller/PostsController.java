@@ -33,6 +33,7 @@ import com.team.socialnetwork.repository.PostLikeRepository;
 import com.team.socialnetwork.repository.PostRepository;
 import com.team.socialnetwork.repository.UserRepository;
 import com.team.socialnetwork.repository.projection.PostIdCountProjection;
+import com.team.socialnetwork.service.NotificationService;
 
 import jakarta.validation.Valid;
 
@@ -44,13 +45,16 @@ public class PostsController {
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final PostLikeRepository postLikeRepository;
+    private final NotificationService notificationService;
 
     public PostsController(PostRepository postRepository, UserRepository userRepository,
-                           CommentRepository commentRepository, PostLikeRepository postLikeRepository) {
+                           CommentRepository commentRepository, PostLikeRepository postLikeRepository,
+                           NotificationService notificationService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
         this.postLikeRepository = postLikeRepository;
+        this.notificationService = notificationService;
     }
 
     @PostMapping
@@ -96,6 +100,22 @@ public class PostsController {
 
         Comment comment = new Comment(request.getText(), post, author);
         commentRepository.save(comment);
+        
+        // Crear notificación para el autor del post (solo si no es el mismo usuario)
+        if (!postAuthor.getId().equals(author.getId())) {
+            try {
+                notificationService.createAndSendNotification(
+                    postAuthor, 
+                    author, 
+                    com.team.socialnetwork.entity.Notification.NotificationType.COMMENT, 
+                    post, 
+                    comment
+                );
+            } catch (Exception e) {
+                System.err.println("Error creating comment notification: " + e.getMessage());
+            }
+        }
+        
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Comment created successfully"));
     }
 
@@ -375,7 +395,24 @@ public class PostsController {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "Already liked");
         }
-        postLikeRepository.save(new PostLike(user, post));
+        PostLike postLike = new PostLike(user, post);
+        postLikeRepository.save(postLike);
+        
+        // Crear notificación para el autor del post (solo si no es el mismo usuario)
+        if (!author.getId().equals(user.getId())) {
+            try {
+                notificationService.createAndSendNotification(
+                    author, 
+                    user, 
+                    com.team.socialnetwork.entity.Notification.NotificationType.LIKE, 
+                    post, 
+                    null
+                );
+            } catch (Exception e) {
+                System.err.println("Error creating like notification: " + e.getMessage());
+            }
+        }
+        
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Post liked successfully"));
     }
 
@@ -403,6 +440,17 @@ public class PostsController {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "Not liked yet");
         }
+        
+        // Eliminar notificación de like si existe
+        if (!author.getId().equals(user.getId())) {
+            notificationService.removeNotification(
+                author, 
+                user, 
+                com.team.socialnetwork.entity.Notification.NotificationType.LIKE, 
+                post
+            );
+        }
+        
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Post unliked successfully"));
     }
 

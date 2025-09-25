@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.team.socialnetwork.dto.ChangeNameRequest;
 import com.team.socialnetwork.dto.ChangePasswordRequest;
 import com.team.socialnetwork.dto.ChangeUsernameRequest;
+import com.team.socialnetwork.dto.FollowRequestActionRequest;
+import com.team.socialnetwork.dto.FollowRequestResponse;
 import com.team.socialnetwork.dto.PostResponse;
 import com.team.socialnetwork.dto.PublicUserResponse;
 import com.team.socialnetwork.dto.RelationshipResponse;
@@ -30,6 +32,7 @@ import com.team.socialnetwork.repository.CommentRepository;
 import com.team.socialnetwork.repository.FollowRequestRepository;
 import com.team.socialnetwork.repository.PostRepository;
 import com.team.socialnetwork.repository.UserRepository;
+import com.team.socialnetwork.service.NotificationService;
 
 import jakarta.validation.Valid;
 
@@ -42,16 +45,19 @@ public class UsersController {
     private final PostRepository postRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final FollowRequestRepository followRequestRepository;
+    private final NotificationService notificationService;
 
     public UsersController(UserRepository userRepository, PasswordEncoder passwordEncoder,
                            PostRepository postRepository, CommentRepository commentRepository,
                            CommentLikeRepository commentLikeRepository,
-                           FollowRequestRepository followRequestRepository) {
+                           FollowRequestRepository followRequestRepository,
+                           NotificationService notificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.postRepository = postRepository;
         this.commentLikeRepository = commentLikeRepository;
         this.followRequestRepository = followRequestRepository;
+        this.notificationService = notificationService;
     }
 
     // Update my visibility (public/private)
@@ -132,12 +138,43 @@ public class UsersController {
                 throw new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.CONFLICT, "Follow request already sent");
             }
-            followRequestRepository.save(new FollowRequest(me, target));
+            FollowRequest followRequest = new FollowRequest(me, target);
+            followRequestRepository.save(followRequest);
+            
+            // Crear notificación de solicitud de seguimiento
+            try {
+                notificationService.createAndSendNotification(
+                    target, 
+                    me, 
+                    com.team.socialnetwork.entity.Notification.NotificationType.FOLLOW_REQUEST, 
+                    null, 
+                    null
+                );
+            } catch (Exception e) {
+                // Log el error pero no fallar la operación
+                System.err.println("Error creating follow request notification: " + e.getMessage());
+            }
+            
             return ResponseEntity.status(org.springframework.http.HttpStatus.ACCEPTED)
                     .body(new com.team.socialnetwork.dto.MessageResponse("Follow request sent"));
         } else {
             me.getFollowing().add(target);
             userRepository.save(me);
+            
+            // Crear notificación de seguimiento
+            try {
+                notificationService.createAndSendNotification(
+                    target, 
+                    me, 
+                    com.team.socialnetwork.entity.Notification.NotificationType.FOLLOW, 
+                    null, 
+                    null
+                );
+            } catch (Exception e) {
+                // Log el error pero no fallar la operación
+                System.err.println("Error creating follow notification: " + e.getMessage());
+            }
+            
             return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Followed successfully"));
         }
     }
@@ -164,6 +201,14 @@ public class UsersController {
             java.util.Optional<FollowRequest> fr = followRequestRepository.findByFollowerIdAndTargetId(me.getId(), target.getId());
             if (fr.isPresent()) {
                 followRequestRepository.delete(fr.get());
+                
+                // Eliminar notificación de solicitud de seguimiento
+                notificationService.removeNotification(
+                    target, 
+                    me, 
+                    com.team.socialnetwork.entity.Notification.NotificationType.FOLLOW_REQUEST
+                );
+                
                 return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follow request canceled"));
             }
             throw new org.springframework.web.server.ResponseStatusException(
@@ -171,6 +216,14 @@ public class UsersController {
         }
         me.getFollowing().remove(target);
         userRepository.save(me);
+        
+        // Eliminar notificación de seguimiento
+        notificationService.removeNotification(
+            target, 
+            me, 
+            com.team.socialnetwork.entity.Notification.NotificationType.FOLLOW
+        );
+        
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Unfollowed successfully"));
     }
 
@@ -197,6 +250,16 @@ public class UsersController {
         // Create following relation
         follower.getFollowing().add(me);
         userRepository.save(follower);
+        
+        // Crear notificación de seguimiento aprobado
+        notificationService.createAndSendNotification(
+            follower, 
+            me, 
+            com.team.socialnetwork.entity.Notification.NotificationType.FOLLOW, 
+            null, 
+            null
+        );
+        
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follow request approved"));
     }
 
@@ -221,6 +284,45 @@ public class UsersController {
                         org.springframework.http.HttpStatus.NOT_FOUND, "Follow request not found"));
         followRequestRepository.delete(fr);
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follow request rejected"));
+    }
+
+    // Remove a follower from my followers list
+    @DeleteMapping("/me/followers/{followerId}")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> removeFollower(Authentication authentication,
+                                                                                      @PathVariable Long followerId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+        String email = authentication.getName();
+        User me = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        User follower = userRepository.findById(followerId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Follower not found"));
+
+        // Verificar que realmente es mi seguidor
+        if (!me.getFollowers().contains(follower) || !follower.getFollowing().contains(me)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "User is not following you");
+        }
+
+        // Eliminar la relación de seguimiento (eliminar seguidor)
+        me.getFollowers().remove(follower);
+        follower.getFollowing().remove(me);
+        
+        userRepository.save(me);
+        userRepository.save(follower);
+        
+        // Eliminar notificación de seguimiento que el seguidor pudo haber recibido
+        notificationService.removeNotification(
+            follower, 
+            me, 
+            com.team.socialnetwork.entity.Notification.NotificationType.FOLLOW
+        );
+        
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follower removed successfully"));
     }
 
     // List all users (safe data)
@@ -483,5 +585,113 @@ public class UsersController {
 
         userRepository.save(user);
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Profile updated successfully"));
+    }
+
+    /**
+     * Obtener solicitudes de seguimiento pendientes para el usuario autenticado
+     * Solo aplicable si el usuario tiene perfil privado
+     */
+    @GetMapping("/me/follow-requests")
+    public ResponseEntity<java.util.List<FollowRequestResponse>> getPendingFollowRequests(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        // Verificar que el usuario tenga perfil privado
+        if (!user.isPrivate()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "User profile is not private");
+        }
+
+        // Obtener todas las solicitudes pendientes
+        java.util.List<com.team.socialnetwork.entity.FollowRequest> requests = 
+                followRequestRepository.findByTargetId(user.getId());
+
+        // Convertir a DTO
+        java.util.List<FollowRequestResponse> response = requests.stream()
+                .map(request -> new FollowRequestResponse(
+                        request.getId(),
+                        request.getFollower().getId(),
+                        request.getFollower().getUsername(),
+                        request.getFollower().getFullName(),
+                        request.getCreatedAt()
+                ))
+                .collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Manejar solicitud de seguimiento (aceptar o rechazar)
+     */
+    @PatchMapping("/me/follow-requests/{requestId}")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> handleFollowRequest(
+            Authentication authentication,
+            @PathVariable Long requestId,
+            @jakarta.validation.Valid @RequestBody FollowRequestActionRequest actionRequest) {
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        // Buscar la solicitud
+        com.team.socialnetwork.entity.FollowRequest request = followRequestRepository.findById(requestId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Follow request not found"));
+
+        // Verificar que la solicitud sea para el usuario autenticado
+        if (!request.getTarget().getId().equals(user.getId())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This follow request is not for you");
+        }
+
+        String action = actionRequest.getAction();
+        if (action == null || (!action.equals("accept") && !action.equals("reject"))) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Action must be 'accept' or 'reject'");
+        }
+
+        if (action.equals("accept")) {
+            // Aceptar: añadir a la lista de seguidores
+            User follower = request.getFollower();
+            User target = request.getTarget();
+            
+            // Añadir la relación de seguimiento
+            follower.getFollowing().add(target);
+            target.getFollowers().add(follower);
+            
+            userRepository.save(follower);
+            userRepository.save(target);
+            
+            // Eliminar la solicitud
+            followRequestRepository.delete(request);
+            
+            // Crear notificación de seguimiento aprobado
+            notificationService.createAndSendNotification(
+                follower, 
+                target, 
+                com.team.socialnetwork.entity.Notification.NotificationType.FOLLOW, 
+                null, 
+                null
+            );
+            
+            return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follow request accepted"));
+        } else {
+            // Rechazar: solo eliminar la solicitud
+            followRequestRepository.delete(request);
+            return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follow request rejected"));
+        }
     }
 }
