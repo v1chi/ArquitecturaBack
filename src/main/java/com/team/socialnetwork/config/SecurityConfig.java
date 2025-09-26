@@ -1,6 +1,7 @@
 package com.team.socialnetwork.config;
 
-import com.team.socialnetwork.security.JwtAuthenticationFilter;
+import java.util.Arrays;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,7 +20,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
+import com.team.socialnetwork.security.JwtAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -85,7 +86,9 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/chat/**").permitAll() // <- permitir websocket mientras 
+                        .requestMatchers("/chat/**").permitAll() // <- WebSocket chat endpoint
+                        .requestMatchers("/ws/**").permitAll()   // <- WebSocket notifications endpoint (SockJS)
+                        .requestMatchers("/ws-native/**").permitAll() // <- WebSocket nativo
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

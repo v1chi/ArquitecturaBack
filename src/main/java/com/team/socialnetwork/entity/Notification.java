@@ -21,6 +21,7 @@ public class Notification {
 
     public enum NotificationType {
         LIKE,           // Alguien le dio like a tu post
+        POST_LIKE,      // Alias para LIKE (compatibilidad con BD)
         COMMENT,        // Alguien comentó en tu post
         COMMENT_LIKE,   // Alguien le dio like a tu comentario
         FOLLOW,         // Alguien te siguió

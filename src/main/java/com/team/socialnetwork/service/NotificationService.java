@@ -160,37 +160,83 @@ public class NotificationService {
     }
 
     private NotificationResponse convertToResponse(Notification notification) {
-        NotificationResponse.ActorInfo actor = new NotificationResponse.ActorInfo(
-            notification.getActor().getId(),
-            notification.getActor().getUsername(),
-            notification.getActor().getFullName()
-        );
+        try {
+            // Verificar que el actor no sea null y tenga datos válidos
+            User actor = notification.getActor();
+            if (actor == null) {
+                System.err.println("❌ Actor es null en notificación " + notification.getId());
+                return null; // O manejar de otra forma
+            }
 
-        NotificationResponse.PostInfo post = null;
-        if (notification.getPost() != null) {
-            post = new NotificationResponse.PostInfo(
-                notification.getPost().getId(),
-                truncateText(notification.getPost().getDescription(), 50)
+            // Obtener username y fullName con valores por defecto
+            String username = actor.getUsername();
+            String fullName = actor.getFullName();
+            
+            // Validar que no sean null o strings vacíos
+            if (username == null || username.trim().isEmpty()) {
+                username = "user_" + actor.getId();
+                System.err.println("⚠️ Username null/vacío para usuario " + actor.getId() + ", usando: " + username);
+            }
+            
+            if (fullName == null || fullName.trim().isEmpty()) {
+                fullName = "Usuario " + actor.getId();
+                System.err.println("⚠️ FullName null/vacío para usuario " + actor.getId() + ", usando: " + fullName);
+            }
+
+            NotificationResponse.ActorInfo actorInfo = new NotificationResponse.ActorInfo(
+                actor.getId(),
+                username.trim(),
+                fullName.trim()
+            );
+
+            NotificationResponse.PostInfo post = null;
+            if (notification.getPost() != null) {
+                String description = notification.getPost().getDescription();
+                post = new NotificationResponse.PostInfo(
+                    notification.getPost().getId(),
+                    truncateText(description != null ? description : "Sin descripción", 50)
+                );
+            }
+
+            NotificationResponse.CommentInfo comment = null;
+            if (notification.getComment() != null) {
+                String text = notification.getComment().getText();
+                comment = new NotificationResponse.CommentInfo(
+                    notification.getComment().getId(),
+                    truncateText(text != null ? text : "Sin comentario", 50)
+                );
+            }
+
+            return new NotificationResponse(
+                notification.getId(),
+                notification.getType().toString(),
+                actorInfo,
+                post,
+                comment,
+                notification.isRead(),
+                notification.getCreatedAt()
+            );
+        } catch (Exception e) {
+            System.err.println("❌ Error convirtiendo notificación " + notification.getId() + ": " + e.getMessage());
+            e.printStackTrace();
+            
+            // Devolver una respuesta básica segura en caso de error
+            NotificationResponse.ActorInfo fallbackActor = new NotificationResponse.ActorInfo(
+                notification.getActor() != null ? notification.getActor().getId() : -1L,
+                "unknown_user",
+                "Usuario desconocido"
+            );
+            
+            return new NotificationResponse(
+                notification.getId(),
+                notification.getType().toString(),
+                fallbackActor,
+                null,
+                null,
+                notification.isRead(),
+                notification.getCreatedAt()
             );
         }
-
-        NotificationResponse.CommentInfo comment = null;
-        if (notification.getComment() != null) {
-            comment = new NotificationResponse.CommentInfo(
-                notification.getComment().getId(),
-                truncateText(notification.getComment().getText(), 50)
-            );
-        }
-
-        return new NotificationResponse(
-            notification.getId(),
-            notification.getType().toString(),
-            actor,
-            post,
-            comment,
-            notification.isRead(),
-            notification.getCreatedAt()
-        );
     }
 
     private String truncateText(String text, int maxLength) {

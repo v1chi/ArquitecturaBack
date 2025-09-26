@@ -1,11 +1,14 @@
 package com.team.socialnetwork.controller;
 
 import java.security.Principal;
+import java.util.Map;
 
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+import com.team.socialnetwork.dto.NotificationCountResponse;
 import com.team.socialnetwork.entity.User;
 import com.team.socialnetwork.repository.UserRepository;
 import com.team.socialnetwork.service.NotificationService;
@@ -30,24 +33,32 @@ public class NotificationWSController {
      * El cliente envía un mensaje a /app/notifications/subscribe
      */
     @MessageMapping("/notifications/subscribe")
-    public void subscribeToNotifications(Principal principal) {
+    public void subscribeToNotifications(@Payload Map<String, Object> payload, Principal principal) {
         if (principal == null) {
+            System.out.println("❌ No hay usuario autenticado en subscribe");
             return;
         }
+
+        String action = (String) payload.get("action");
+        System.out.println("📡 Suscripción recibida - Usuario: " + principal.getName() + ", Acción: " + action);
 
         try {
             User user = userRepository.findByEmail(principal.getName())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            // Enviar contador actual de notificaciones no leídas
-            var unreadCount = notificationService.getUnreadCount(user.getId());
-            messagingTemplate.convertAndSend("/topic/notifications/" + user.getId(), 
-                    new NotificationService.NotificationWebSocketMessage(
-                            "INITIAL_UNREAD_COUNT", null, unreadCount.getUnreadCount()));
-            
-            System.out.println("Usuario " + user.getUsername() + " suscrito a notificaciones WebSocket");
+            if ("subscribe".equals(action)) {
+                // Enviar contador actual de notificaciones no leídas
+                NotificationCountResponse unreadCount = notificationService.getUnreadCount(user.getId());
+                
+                messagingTemplate.convertAndSend("/topic/notifications/" + user.getId(), 
+                        new NotificationService.NotificationWebSocketMessage(
+                                "INITIAL_UNREAD_COUNT", null, unreadCount.getUnreadCount()));
+                
+                System.out.println("✅ Usuario " + user.getUsername() + " suscrito - Contador enviado: " + unreadCount.getUnreadCount());
+            }
         } catch (RuntimeException e) {
-            System.err.println("Error al suscribir usuario a notificaciones: " + e.getMessage());
+            System.err.println("❌ Error al suscribir usuario a notificaciones: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -55,20 +66,26 @@ public class NotificationWSController {
      * Endpoint para marcar todas las notificaciones como leídas via WebSocket
      */
     @MessageMapping("/notifications/mark-all-read")
-    public void markAllAsRead(Principal principal) {
+    public void markAllAsRead(@Payload Map<String, Object> payload, Principal principal) {
         if (principal == null) {
+            System.out.println("❌ No hay usuario autenticado en mark-all-read");
             return;
         }
+
+        String action = (String) payload.get("action");
+        System.out.println("📖 Marcar como leídas - Usuario: " + principal.getName() + ", Acción: " + action);
 
         try {
             User user = userRepository.findByEmail(principal.getName())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            notificationService.markAllAsRead(user.getId());
-            
-            System.out.println("Usuario " + user.getUsername() + " marcó todas las notificaciones como leídas");
+            if ("mark-all-read".equals(action)) {
+                int updated = notificationService.markAllAsRead(user.getId());
+                System.out.println("✅ Usuario " + user.getUsername() + " marcó " + updated + " notificaciones como leídas");
+            }
         } catch (RuntimeException e) {
-            System.err.println("Error al marcar notificaciones como leídas: " + e.getMessage());
+            System.err.println("❌ Error al marcar notificaciones como leídas: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
