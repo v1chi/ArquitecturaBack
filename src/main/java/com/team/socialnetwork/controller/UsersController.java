@@ -1,5 +1,9 @@
 package com.team.socialnetwork.controller;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -135,14 +139,26 @@ public class UsersController {
         }
         if (target.isPrivate()) {
             if (followRequestRepository.existsByFollowerIdAndTargetId(me.getId(), target.getId())) {
-                throw new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.CONFLICT, "Follow request already sent");
+                System.out.println("🔔 Solicitud de follow duplicada detectada:");
+                System.out.println("   👤 Usuario: " + me.getFullName() + " (ID: " + me.getId() + ")");
+                System.out.println("   🎯 Target: " + target.getFullName() + " (ID: " + target.getId() + ")");
+                System.out.println("   🔄 Actualizando notificación existente...");
+                
+                // En lugar de lanzar error, actualizar la notificación existente
+                notificationService.updateAndResendFollowRequestNotification(target.getId(), me.getId());
+                
+                return ResponseEntity.status(org.springframework.http.HttpStatus.ACCEPTED)
+                        .body(new com.team.socialnetwork.dto.MessageResponse("Follow request updated"));
             }
             FollowRequest followRequest = new FollowRequest(me, target);
             followRequestRepository.save(followRequest);
             
             // Crear notificación de solicitud de seguimiento
             try {
+                System.out.println("🔔 Enviando notificación FOLLOW_REQUEST:");
+                System.out.println("   👤 De: " + me.getFullName() + " (ID: " + me.getId() + ")");
+                System.out.println("   👥 Para: " + target.getFullName() + " (ID: " + target.getId() + ")");
+                
                 notificationService.createAndSendNotification(
                     target, 
                     me, 
@@ -150,9 +166,12 @@ public class UsersController {
                     null, 
                     null
                 );
+                
+                System.out.println("✅ Notificación FOLLOW_REQUEST enviada exitosamente");
             } catch (Exception e) {
                 // Log el error pero no fallar la operación
-                System.err.println("Error creating follow request notification: " + e.getMessage());
+                System.err.println("❌ Error creating follow request notification: " + e.getMessage());
+                e.printStackTrace();
             }
             
             return ResponseEntity.status(org.springframework.http.HttpStatus.ACCEPTED)
@@ -427,8 +446,8 @@ public class UsersController {
 
     // List posts of a user (respect privacy)
     @GetMapping("/{userId}/posts")
-    public ResponseEntity<java.util.List<PostResponse>> listUserPosts(Authentication authentication,
-                                                                      @PathVariable Long userId) {
+    public ResponseEntity<?> listUserPosts(Authentication authentication,
+                                           @PathVariable Long userId) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
@@ -440,10 +459,20 @@ public class UsersController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        
+        // Verificar si el perfil es privado y el usuario no tiene acceso
         if (user.isPrivate() && !user.getId().equals(me.getId()) && !me.getFollowing().contains(user)) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is private");
+            // En lugar de devolver 403, devolver 200 con información estructurada
+            Map<String, Object> privateProfileResponse = new HashMap<>();
+            privateProfileResponse.put("isPrivate", true);
+            privateProfileResponse.put("message", "Esta cuenta es privada");
+            privateProfileResponse.put("posts", new ArrayList<>());
+            privateProfileResponse.put("canFollow", !me.getFollowing().contains(user) && !user.getId().equals(me.getId()));
+            privateProfileResponse.put("userId", userId);
+            privateProfileResponse.put("username", user.getUsername());
+            return ResponseEntity.ok(privateProfileResponse);
         }
+        
         java.util.List<Post> posts = postRepository.findByAuthorId(user.getId());
         java.util.List<PostResponse> resp = posts.stream()
                 .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage(), p.getAuthor().getUsername(), p.getAuthor().getId()))
@@ -603,13 +632,12 @@ public class UsersController {
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
 
-        // Verificar que el usuario tenga perfil privado
+        // Si el perfil es público, devolver lista vacía (no necesita follow requests)
         if (!user.isPrivate()) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST, "User profile is not private");
+            return ResponseEntity.ok(new java.util.ArrayList<>());
         }
 
-        // Obtener todas las solicitudes pendientes
+        // Obtener todas las solicitudes pendientes (solo para perfiles privados)
         java.util.List<com.team.socialnetwork.entity.FollowRequest> requests = 
                 followRequestRepository.findByTargetId(user.getId());
 

@@ -1,5 +1,7 @@
 package com.team.socialnetwork.service;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -14,17 +16,26 @@ import com.team.socialnetwork.entity.Notification;
 import com.team.socialnetwork.entity.Post;
 import com.team.socialnetwork.entity.User;
 import com.team.socialnetwork.repository.NotificationRepository;
+import com.team.socialnetwork.repository.UserRepository;
+import com.team.socialnetwork.entity.Notification;
+import com.team.socialnetwork.entity.Post;
+import com.team.socialnetwork.entity.User;
+import com.team.socialnetwork.repository.NotificationRepository;
+import com.team.socialnetwork.repository.UserRepository;
 
 @Service
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final UserRepository userRepository;
 
     public NotificationService(NotificationRepository notificationRepository, 
-                              SimpMessagingTemplate messagingTemplate) {
+                              SimpMessagingTemplate messagingTemplate,
+                              UserRepository userRepository) {
         this.notificationRepository = notificationRepository;
         this.messagingTemplate = messagingTemplate;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -149,8 +160,21 @@ public class NotificationService {
     }
 
     private void sendNotificationByWebSocket(Long userId, NotificationResponse notification) {
-        messagingTemplate.convertAndSend("/topic/notifications/" + userId, 
-                new NotificationWebSocketMessage("NEW_NOTIFICATION", notification, null));
+        try {
+            String destination = "/topic/notifications/" + userId;
+            NotificationWebSocketMessage message = new NotificationWebSocketMessage("NEW_NOTIFICATION", notification, null);
+            
+            System.out.println("📡 Enviando notificación WebSocket:");
+            System.out.println("   🎯 Destino: " + destination);
+            System.out.println("   📄 Tipo: " + notification.getType());
+            System.out.println("   👤 Actor: " + (notification.getActor() != null ? notification.getActor().getFullName() : "null"));
+            
+            messagingTemplate.convertAndSend(destination, message);
+            System.out.println("✅ Notificación WebSocket enviada exitosamente");
+        } catch (Exception e) {
+            System.err.println("❌ Error enviando notificación WebSocket: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void sendUnreadCountUpdate(Long userId) {
@@ -244,6 +268,64 @@ public class NotificationService {
             return text;
         }
         return text.substring(0, maxLength) + "...";
+    }
+
+    /**
+     * Actualiza una notificación existente de FOLLOW_REQUEST y la reenvía por WebSocket
+     */
+    public void updateAndResendFollowRequestNotification(Long recipientId, Long actorId) {
+        try {
+            System.out.println("🔔 Actualizando notificación FOLLOW_REQUEST existente:");
+            System.out.println("   👤 Recipient ID: " + recipientId);
+            System.out.println("   👥 Actor ID: " + actorId);
+            
+            // Buscar la notificación FOLLOW_REQUEST existente
+            Optional<Notification> existingNotificationOpt = notificationRepository
+                .findByRecipientIdAndActorIdAndType(
+                    recipientId, 
+                    actorId, 
+                    Notification.NotificationType.FOLLOW_REQUEST
+                );
+            
+            if (!existingNotificationOpt.isPresent()) {
+                System.out.println("   ⚠️ No se encontró notificación FOLLOW_REQUEST existente, creando nueva...");
+                // Si no existe, crear nueva (esto no debería pasar, pero por seguridad)
+                User recipient = userRepository.findById(recipientId).orElse(null);
+                User actor = userRepository.findById(actorId).orElse(null);
+                if (recipient != null && actor != null) {
+                    createAndSendNotification(recipient, actor, Notification.NotificationType.FOLLOW_REQUEST, null, null);
+                }
+                return;
+            }
+            
+            // Tomar la notificación encontrada
+            Notification notification = existingNotificationOpt.get();
+            
+            // Actualizar timestamp y marcar como no leída
+            notification.setCreatedAt(java.time.Instant.now());
+            notification.setRead(false);
+            
+            // Guardar la notificación actualizada
+            notificationRepository.save(notification);
+            
+            System.out.println("   ✅ Notificación actualizada - Nueva fecha: " + notification.getCreatedAt());
+            System.out.println("   📤 Reenviando por WebSocket...");
+            
+            // Convertir a DTO
+            NotificationResponse notificationResponse = convertToResponse(notification);
+            
+            // Reenviar por WebSocket
+            sendNotificationByWebSocket(recipientId, notificationResponse);
+            
+            // Enviar actualización del contador
+            sendUnreadCountUpdate(recipientId);
+            
+            System.out.println("   ✅ Notificación FOLLOW_REQUEST actualizada y reenviada exitosamente");
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error actualizando notificación FOLLOW_REQUEST: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     // Clase interna para mensajes WebSocket
