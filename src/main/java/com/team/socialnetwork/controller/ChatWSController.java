@@ -28,29 +28,24 @@ public class ChatWSController {
     @MessageMapping("/chat")
     @Transactional
     public void sendMessage(@Payload ChatMessageWS chatMessageWS, Principal principal) {
-        System.out.println("Mensaje recibido en backend: " + chatMessageWS);
-        System.out.println("Usuario logueado: " + principal.getName());
-        // 1. Obtener el usuario que envía desde el JWT
         User sender = userRepository.findByEmail(principal.getName())
-            .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // 2. Obtener receptor
         User receiver = userRepository.findById(chatMessageWS.getReceiverId())
-            .orElseThrow(() -> new RuntimeException("Receptor no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Receptor no encontrado"));
 
-        // Crear y guardar mensaje 
         Message message = new Message(sender, receiver, chatMessageWS.getContent());
         messageRepository.save(message);
 
-        // Enviar mensaje al topic del receptor 
         ChatMessageWS response = new ChatMessageWS();
-        response.setId(message.getId());  // nuevo: asignar id generado
+        response.setId(message.getId());
         response.setSenderId(sender.getId());
         response.setReceiverId(receiver.getId());
         response.setContent(message.getContent());
-        response.setCreatedAt(message.getCreatedAt()); // nuevo: asignar fecha
+        response.setCreatedAt(message.getCreatedAt());
+
         messagingTemplate.convertAndSend("/topic/" + receiver.getId(), response);
-        messagingTemplate.convertAndSend("/topic/" + sender.getId(), response); // nuevo: enviar también al emisor
+        messagingTemplate.convertAndSend("/topic/" + sender.getId(), response);
 
     }
 }
