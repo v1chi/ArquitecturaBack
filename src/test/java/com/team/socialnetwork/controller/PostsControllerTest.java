@@ -282,10 +282,13 @@ class PostsControllerTest {
 
         CreateCommentRequest request = new CreateCommentRequest();
         request.setText("Nice post!");
-        ResponseEntity<MessageResponse> response = postsController.createComment(authentication, 1L, request);
+        ResponseEntity<CommentResponse> response = postsController.createComment(authentication, 1L, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Comment created successfully", response.getBody().getMessage());
+        assertNotNull(response.getBody());
+        assertEquals("Nice post!", response.getBody().getText());
+        assertEquals(testUser.getUsername(), response.getBody().getUsername());
+        assertNotNull(response.getBody().getUser());
         verify(commentRepository).save(any(Comment.class));
     }
 

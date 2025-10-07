@@ -502,7 +502,22 @@ public class UsersController {
         
         java.util.List<Post> posts = postRepository.findByAuthorId(user.getId());
         java.util.List<PostResponse> resp = posts.stream()
-                .map(p -> new PostResponse(p.getId(), p.getCreatedAt(), p.getDescription(), p.getImage(), p.getAuthor().getUsername(), p.getAuthor().getId()))
+                .map(p -> new PostResponse(
+                        p.getId(), 
+                        p.getCreatedAt(), 
+                        p.getDescription(), 
+                        p.getImage(), 
+                        p.getAuthor().getUsername(), 
+                        p.getAuthor().getId(),
+                        new SafeUser(
+                                p.getAuthor().getId(),
+                                p.getAuthor().getFullName(),
+                                p.getAuthor().getUsername(),
+                                p.getAuthor().getEmail(),
+                                p.getAuthor().getCreatedAt(),
+                                p.getAuthor().getProfilePicture()
+                        )
+                ))
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(resp);
     }

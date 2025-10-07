@@ -75,7 +75,7 @@ public class PostsController {
     }
 
     @org.springframework.web.bind.annotation.PostMapping("/{postId}/comments")
-    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> createComment(Authentication authentication,
+    public ResponseEntity<com.team.socialnetwork.dto.CommentResponse> createComment(Authentication authentication,
                                                                                    @org.springframework.web.bind.annotation.PathVariable Long postId,
                                                                                    @Valid @RequestBody CreateCommentRequest request) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -116,7 +116,25 @@ public class PostsController {
             }
         }
         
-        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Comment created successfully"));
+        // Crear respuesta con información completa del usuario
+        com.team.socialnetwork.dto.SafeUser userDto = new com.team.socialnetwork.dto.SafeUser(
+                author.getId(),
+                author.getFullName(),
+                author.getUsername(),
+                author.getEmail(),
+                author.getCreatedAt(),
+                author.getProfilePicture()
+        );
+        
+        com.team.socialnetwork.dto.CommentResponse commentResponse = new com.team.socialnetwork.dto.CommentResponse(
+                comment.getId(),
+                comment.getCreatedAt(),
+                comment.getText(),
+                author.getUsername(),
+                userDto
+        );
+        
+        return ResponseEntity.ok(commentResponse);
     }
 
     // List comments for a post (no userId required)
@@ -142,7 +160,20 @@ public class PostsController {
         }
         java.util.List<com.team.socialnetwork.entity.Comment> comments = commentRepository.findByPostId(postId);
         java.util.List<com.team.socialnetwork.dto.CommentResponse> resp = comments.stream()
-                .map(c -> new com.team.socialnetwork.dto.CommentResponse(c.getId(), c.getCreatedAt(), c.getText(), c.getAuthor().getUsername()))
+                .map(c -> new com.team.socialnetwork.dto.CommentResponse(
+                        c.getId(), 
+                        c.getCreatedAt(), 
+                        c.getText(), 
+                        c.getAuthor().getUsername(),
+                        new com.team.socialnetwork.dto.SafeUser(
+                                c.getAuthor().getId(),
+                                c.getAuthor().getFullName(),
+                                c.getAuthor().getUsername(),
+                                c.getAuthor().getEmail(),
+                                c.getAuthor().getCreatedAt(),
+                                c.getAuthor().getProfilePicture()
+                        )
+                ))
                 .toList();
         return ResponseEntity.ok(resp);
     }
@@ -178,7 +209,8 @@ public class PostsController {
                 post.getAuthor().getFullName(),
                 post.getAuthor().getUsername(),
                 post.getAuthor().getEmail(),
-                post.getAuthor().getCreatedAt()
+                post.getAuthor().getCreatedAt(),
+                post.getAuthor().getProfilePicture()
         );
 
         PostDetailResponse resp = new PostDetailResponse(
@@ -225,7 +257,15 @@ public class PostsController {
                         p.getDescription(),
                         p.getImage(),
                         p.getAuthor().getUsername(),
-                        p.getAuthor().getId()
+                        p.getAuthor().getId(),
+                        new com.team.socialnetwork.dto.SafeUser(
+                                p.getAuthor().getId(),
+                                p.getAuthor().getFullName(),
+                                p.getAuthor().getUsername(),
+                                p.getAuthor().getEmail(),
+                                p.getAuthor().getCreatedAt(),
+                                p.getAuthor().getProfilePicture()
+                        )
                 ))
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(resp);
@@ -297,7 +337,8 @@ public class PostsController {
                     post.getAuthor().getFullName(),
                     post.getAuthor().getUsername(),
                     post.getAuthor().getEmail(),
-                    post.getAuthor().getCreatedAt()
+                    post.getAuthor().getCreatedAt(),
+                    post.getAuthor().getProfilePicture()
             );
             long likes = likesPerPost.getOrDefault(post.getId(), 0L);
             long comments = commentsPerPost.getOrDefault(post.getId(), 0L);

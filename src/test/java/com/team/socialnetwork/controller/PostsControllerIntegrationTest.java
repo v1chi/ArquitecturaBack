@@ -254,7 +254,11 @@ class PostsControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Comment created successfully"));
+                .andExpect(jsonPath("$.text").value("Great post!"))
+                .andExpect(jsonPath("$.username").value(testUser.getUsername()))
+                .andExpect(jsonPath("$.user").exists())
+                .andExpect(jsonPath("$.user.id").value(testUser.getId()))
+                .andExpect(jsonPath("$.user.profilePicture").exists());
     }
 
     @Test

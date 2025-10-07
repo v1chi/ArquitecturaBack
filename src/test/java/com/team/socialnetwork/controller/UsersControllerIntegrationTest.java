@@ -1,12 +1,9 @@
 package com.team.socialnetwork.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.team.socialnetwork.dto.UpdateProfileRequest;
-import com.team.socialnetwork.entity.FollowRequest;
-import com.team.socialnetwork.entity.Post;
-import com.team.socialnetwork.entity.User;
-import com.team.socialnetwork.repository.*;
-import com.team.socialnetwork.security.JwtService;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.hamcrest.Matchers.hasSize;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,14 +13,23 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.hamcrest.Matchers.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.team.socialnetwork.dto.UpdateProfileRequest;
+import com.team.socialnetwork.entity.FollowRequest;
+import com.team.socialnetwork.entity.Post;
+import com.team.socialnetwork.entity.User;
+import com.team.socialnetwork.repository.FollowRequestRepository;
+import com.team.socialnetwork.repository.PostRepository;
+import com.team.socialnetwork.repository.UserRepository;
+import com.team.socialnetwork.security.JwtService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -224,10 +230,14 @@ class UsersControllerIntegrationTest {
         Post post = new Post("Private post", null, targetUser);
         postRepository.save(post);
 
-        // Intentar acceder sin seguir
+        // Intentar acceder sin seguir - ahora devuelve información estructurada
         mockMvc.perform(get("/users/" + targetUser.getId() + "/posts")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isPrivate").value(true))
+                .andExpect(jsonPath("$.message").value("Esta cuenta es privada"))
+                .andExpect(jsonPath("$.posts").isEmpty())
+                .andExpect(jsonPath("$.canFollow").value(true));
     }
 
     @Test

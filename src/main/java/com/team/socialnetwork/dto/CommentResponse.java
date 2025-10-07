@@ -7,6 +7,7 @@ public class CommentResponse {
     private Instant createdAt;
     private String text;
     private String username;
+    private SafeUser user;
 
     public CommentResponse() {}
 
@@ -17,6 +18,14 @@ public class CommentResponse {
         this.username = username;
     }
 
+    public CommentResponse(Long id, Instant createdAt, String text, String username, SafeUser user) {
+        this.id = id;
+        this.createdAt = createdAt;
+        this.text = text;
+        this.username = username;
+        this.user = user;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Instant getCreatedAt() { return createdAt; }
@@ -25,5 +34,7 @@ public class CommentResponse {
     public void setText(String text) { this.text = text; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+    public SafeUser getUser() { return user; }
+    public void setUser(SafeUser user) { this.user = user; }
 }
 

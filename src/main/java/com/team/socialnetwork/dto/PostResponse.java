@@ -10,6 +10,7 @@ public class PostResponse {
     private String image;
     private String username;
     private Long userId;
+    private SafeUser user;
 
     public PostResponse() {}
 
@@ -20,6 +21,16 @@ public class PostResponse {
         this.image = image;
         this.username = username;
         this.userId = userId;
+    }
+
+    public PostResponse(Long id, Instant createdAt, String description, String image, String username, Long userId, SafeUser user) {
+        this.id = id;
+        this.createdAt = createdAt;
+        this.description = description;
+        this.image = image;
+        this.username = username;
+        this.userId = userId;
+        this.user = user;
     }
 
     public Long getId() { return id; }
@@ -34,5 +45,7 @@ public class PostResponse {
     public void setUsername(String username) { this.username = username; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public SafeUser getUser() { return user; }
+    public void setUser(SafeUser user) { this.user = user; }
 }
 
