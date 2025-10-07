@@ -7,7 +7,7 @@ Minimal Spring Boot backend with JWT authentication, PostgreSQL, and comprehensi
 - Spring Boot 3 (Java 17)
 - Spring Security + JWT
 - Spring Data JPA + PostgreSQL
-- JaCoCo for code coverage (65% minimum)
+- JaCoCo for code coverage
 - GitHub Actions CI/CD
 - Docker containerization
 
@@ -60,7 +60,7 @@ mvn clean test
 mvn jacoco:report
 ```
 
-### Verify coverage meets minimum threshold (65%):
+### Verify coverage meets minimum threshold:
 ```bash
 mvn jacoco:check
 ```
@@ -107,5 +107,7 @@ Set in `.env`:
 - POST `/auth/reset-password` → set a new password with token
 - Use header: `Authorization: Bearer <access_token>`
 
+
+Test
 
 
