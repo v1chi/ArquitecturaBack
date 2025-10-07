@@ -31,7 +31,7 @@ jobs:
       continue-on-error: true
 
     - name: Coverage report generated
-      run: echo "✅ Tests executed and coverage report generated successfully"
+      run: echo "Tests executed and coverage report generated successfully"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
