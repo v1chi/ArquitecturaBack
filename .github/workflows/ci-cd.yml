@@ -98,10 +98,10 @@ jobs:
         path: target/
 
     - name: Deploy to Railway
-      uses: railwayapp/railway-deploy@v3
+      uses: railway/railway-action@v2
       with:
         railway_token: ${{ secrets.RAILWAY_TOKEN }}
-        service: ${{ secrets.RAILWAY_SERVICE_NAME }}
+        command: up
 
   deploy-alternative:
     name: Deploy to Render (Alternative)
