@@ -15,17 +15,20 @@ Minimal Spring Boot backend with JWT authentication, PostgreSQL, and comprehensi
 
 This project includes a comprehensive CI/CD pipeline with:
 
-### ✅ Automated Testing
+ Automated Testing
 - Unit tests with Mockito
 - Code coverage analysis with JaCoCo (65% minimum required)
+
+Pipeline Demo
+Last pipeline demonstration: 7 de octubre de 2025 - Pipeline funcionando correctamente 
 - Coverage reports on pull requests
 
-### ✅ Automated Deployment
+Automated Deployment
 - **Railway**: Automatic deployment to Railway (primary)
 - **Render**: Alternative deployment option
 - Docker-based deployments
 
-### 🔧 Setup CI/CD
+Setup CI/CD
 
 1. **For Railway Deployment:**
    ```
