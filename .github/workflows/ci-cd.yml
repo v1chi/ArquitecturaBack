@@ -82,29 +82,7 @@ jobs:
         retention-days: 1
 
   deploy:
-    name: Deploy to Railway
-    needs: [test, build]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: jar-file
-        path: target/
-
-    - name: Deploy to Railway
-      uses: railway/railway-action@v2
-      with:
-        railway_token: ${{ secrets.RAILWAY_TOKEN }}
-        command: up
-
-  deploy-alternative:
-    name: Deploy to Render (Alternative)
+    name: Deploy to Render
     needs: [test, build]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
