@@ -14,6 +14,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByUsername(String username);
     long deleteByEmailConfirmedFalseAndCreatedAtBefore(java.time.Instant threshold);
 
+    @Query("select u from User u where lower(u.username) like lower(concat(:prefix, '%')) " +
+           "or lower(coalesce(u.fullName, '')) like lower(concat(:prefix, '%'))")
+    List<User> searchByPrefix(@Param("prefix") String prefix);
+
     @Query("select u from User u where lower(u.username) like lower(concat('%', :term, '%')) " +
            "or lower(coalesce(u.fullName, '')) like lower(concat('%', :term, '%'))")
     List<User> searchByTerm(@Param("term") String term);

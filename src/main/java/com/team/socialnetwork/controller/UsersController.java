@@ -344,14 +344,40 @@ public class UsersController {
         return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follower removed successfully"));
     }
 
-    // List all users (safe data)
+    // List users with configurable search
     @GetMapping
-    public ResponseEntity<java.util.List<SafeUser>> listUsers(@RequestParam(name = "q") String query) {
+    public ResponseEntity<java.util.List<SafeUser>> listUsers(
+            @RequestParam(name = "q") String query,
+            @RequestParam(name = "match", defaultValue = "startsWith") String matchMode) {
         if (query == null || query.trim().isEmpty()) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.BAD_REQUEST, "Query parameter 'q' is required");
         }
-        java.util.List<User> users = userRepository.searchByTerm(query.trim());
+        String trimmedQuery = query.trim();
+        String mode = matchMode == null ? "startswith" : matchMode.trim().toLowerCase();
+
+        java.util.List<User> users;
+        switch (mode) {
+            case "startswith":
+            case "prefix":
+                users = userRepository.searchByPrefix(trimmedQuery);
+                break;
+            case "contains":
+                users = userRepository.searchByTerm(trimmedQuery);
+                break;
+            case "both":
+            case "smart":
+                java.util.LinkedHashMap<Long, User> merged = new java.util.LinkedHashMap<>();
+                userRepository.searchByPrefix(trimmedQuery).forEach(user -> merged.put(user.getId(), user));
+                userRepository.searchByTerm(trimmedQuery).forEach(user -> merged.putIfAbsent(user.getId(), user));
+                users = new java.util.ArrayList<>(merged.values());
+                break;
+            default:
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST,
+                        "Invalid match mode. Use startsWith, contains or both");
+        }
+
         java.util.List<SafeUser> resp = users.stream()
                 .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt()))
                 .toList();
