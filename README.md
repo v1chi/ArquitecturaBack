@@ -107,24 +107,5 @@ Set in `.env`:
 - POST `/auth/reset-password` → set a new password with token
 - Use header: `Authorization: Bearer <access_token>`
 
-## Deployment Services
 
-### Railway (Recommended)
-1. Connect your GitHub repository to Railway
-2. Set environment variables in Railway dashboard
-3. Deploy automatically on push to main
 
-### Render (Alternative)
-1. Connect your GitHub repository to Render
-2. Set environment variables in Render dashboard
-3. Deploy automatically on push to main
-
-## Reset Database (Docker)
-
-With containers stopped, remove the PostgreSQL data volume:
-
-```bash
-docker volume rm backend_db_data
-```
-
-Then start the stack again using the Start/Stop commands above.
