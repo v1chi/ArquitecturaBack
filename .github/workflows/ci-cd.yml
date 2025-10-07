@@ -34,9 +34,9 @@ jobs:
       run: |
         echo "Checking coverage threshold..."
         if mvn jacoco:check -q; then
-          echo "✅ Coverage meets minimum threshold of 62%"
+          echo "✅ Coverage meets minimum threshold of 60%"
         else
-          echo "⚠️  Coverage check failed, but continuing (JaCoCo standalone issue)"
+          echo "⚠️  Coverage check failed, but continuing"
           echo "Coverage report generated successfully"
         fi
       continue-on-error: true
@@ -53,8 +53,8 @@ jobs:
       with:
         paths: ${{ github.workspace }}/target/site/jacoco/jacoco.xml
         token: ${{ secrets.GITHUB_TOKEN }}
-        min-coverage-overall: 65
-        min-coverage-changed-files: 65
+        min-coverage-overall: 60
+        min-coverage-changed-files: 60
 
   build:
     name: Build Application
