@@ -21,8 +21,8 @@ public class Post {
     @Column(length = 500)
     private String description;
 
-    @Column(length = 500)
-    private String image; // URL or path
+    @Column(name = "image", columnDefinition = "TEXT")
+    private String image; // Base64 or URL/path
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false, foreignKey = @ForeignKey(name = "fk_post_author"))

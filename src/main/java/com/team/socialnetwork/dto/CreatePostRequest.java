@@ -6,8 +6,9 @@ public class CreatePostRequest {
     @Size(max = 500)
     private String description;
 
-    @Size(max = 500)
-    private String image; // URL or path
+    // Allow images up to ~10MB in base64 (approx. 13MB string length)
+    @Size(max = 13_000_000)
+    private String image; // Base64 payload or URL/path
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
