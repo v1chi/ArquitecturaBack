@@ -1,0 +1,115 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+  test:
+    name: Run Tests and Code Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: ${{ env.JAVA_DISTRIBUTION }}
+        cache: maven
+
+    - name: Run tests with coverage
+      run: mvn clean test
+
+    - name: Generate coverage report
+      run: mvn jacoco:report
+
+    - name: Verify coverage meets minimum threshold
+      run: mvn jacoco:check
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./target/site/jacoco/jacoco.xml
+        fail_ci_if_error: false
+
+    - name: Comment coverage on PR
+      if: github.event_name == 'pull_request'
+      uses: madrapps/jacoco-report@v1.6.1
+      with:
+        paths: ${{ github.workspace }}/target/site/jacoco/jacoco.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+        min-coverage-overall: 65
+        min-coverage-changed-files: 65
+
+  build:
+    name: Build Application
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: ${{ env.JAVA_DISTRIBUTION }}
+        cache: maven
+
+    - name: Build application
+      run: mvn clean package -DskipTests
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: jar-file
+        path: target/*.jar
+        retention-days: 1
+
+  deploy:
+    name: Deploy to Railway
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: jar-file
+        path: target/
+
+    - name: Deploy to Railway
+      uses: railwayapp/railway-deploy@v3
+      with:
+        railway_token: ${{ secrets.RAILWAY_TOKEN }}
+        service: ${{ secrets.RAILWAY_SERVICE_NAME }}
+
+  deploy-alternative:
+    name: Deploy to Render (Alternative)
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to Render
+      uses: johnbeynon/render-deploy-action@v0.0.8
+      with:
+        service-id: ${{ secrets.RENDER_SERVICE_ID }}
+        api-key: ${{ secrets.RENDER_API_KEY }}

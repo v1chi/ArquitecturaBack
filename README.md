@@ -1,12 +1,69 @@
 # Social Network Backend
 
-Minimal Spring Boot backend with JWT authentication and PostgreSQL.
+Minimal Spring Boot backend with JWT authentication, PostgreSQL, and comprehensive CI/CD pipeline.
 
 ## Stack
 
 - Spring Boot 3 (Java 17)
 - Spring Security + JWT
 - Spring Data JPA + PostgreSQL
+- JaCoCo for code coverage (65% minimum)
+- GitHub Actions CI/CD
+- Docker containerization
+
+## CI/CD Pipeline
+
+This project includes a comprehensive CI/CD pipeline with:
+
+### ✅ Automated Testing
+- Unit tests with Mockito
+- Code coverage analysis with JaCoCo (65% minimum required)
+- Coverage reports on pull requests
+
+### ✅ Automated Deployment
+- **Railway**: Automatic deployment to Railway (primary)
+- **Render**: Alternative deployment option
+- Docker-based deployments
+
+### 🔧 Setup CI/CD
+
+1. **For Railway Deployment:**
+   ```
+   # Add these secrets to your GitHub repository:
+   RAILWAY_TOKEN=your_railway_token
+   RAILWAY_SERVICE_NAME=your_service_name
+   ```
+
+2. **For Render Deployment (alternative):**
+   ```
+   # Add these secrets to your GitHub repository:
+   RENDER_SERVICE_ID=your_service_id  
+   RENDER_API_KEY=your_api_key
+   ```
+
+3. **Coverage Reports:**
+   - Codecov integration (optional)
+   - Coverage comments on PRs automatically
+
+## Testing & Coverage
+
+### Run tests locally:
+```bash
+mvn clean test
+```
+
+### Generate coverage report:
+```bash
+mvn jacoco:report
+```
+
+### Verify coverage meets minimum threshold (65%):
+```bash
+mvn jacoco:check
+```
+
+### View coverage report:
+Open `target/site/jacoco/index.html` in your browser
 
 ## Quick Start (Docker)
 
@@ -46,6 +103,18 @@ Set in `.env`:
 - POST `/auth/request-password-reset` → sends reset email
 - POST `/auth/reset-password` → set a new password with token
 - Use header: `Authorization: Bearer <access_token>`
+
+## Deployment Services
+
+### Railway (Recommended)
+1. Connect your GitHub repository to Railway
+2. Set environment variables in Railway dashboard
+3. Deploy automatically on push to main
+
+### Render (Alternative)
+1. Connect your GitHub repository to Render
+2. Set environment variables in Render dashboard
+3. Deploy automatically on push to main
 
 ## Reset Database (Docker)
 
