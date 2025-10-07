@@ -110,7 +110,13 @@ public class ChatController {
 
         List<ChatUserResponse> chats = chatUserIds.stream()
                 .map(id -> userRepository.findById(id)
-                        .map(user -> new ChatUserResponse(user.getId(), user.getUsername()))
+                        .map(user -> new ChatUserResponse(
+                                user.getId(), 
+                                user.getUsername(), 
+                                user.getFullName(), 
+                                user.getEmail(), 
+                                user.getProfilePicture()
+                        ))
                         .orElse(null))
                 .filter(Objects::nonNull)
                 .toList();
