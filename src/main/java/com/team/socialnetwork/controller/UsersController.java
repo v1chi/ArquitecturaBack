@@ -26,6 +26,7 @@ import com.team.socialnetwork.dto.PostResponse;
 import com.team.socialnetwork.dto.PublicUserResponse;
 import com.team.socialnetwork.dto.RelationshipResponse;
 import com.team.socialnetwork.dto.SafeUser;
+import com.team.socialnetwork.dto.UpdateProfilePictureRequest;
 import com.team.socialnetwork.dto.UpdateProfileRequest;
 import com.team.socialnetwork.dto.UpdateVisibilityRequest;
 import com.team.socialnetwork.entity.FollowRequest;
@@ -108,7 +109,7 @@ public class UsersController {
         long followingCount = user.getFollowing().size();
         PublicUserResponse dto = new PublicUserResponse(
                 user.getId(), user.getFullName(), user.getUsername(), user.getEmail(), user.getCreatedAt(),
-                followersCount, followingCount, user.isPrivate()
+                followersCount, followingCount, user.isPrivate(), user.getProfilePicture()
         );
         return ResponseEntity.ok(dto);
     }
@@ -379,7 +380,7 @@ public class UsersController {
         }
 
         java.util.List<SafeUser> resp = users.stream()
-                .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt()))
+                .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt(), u.getProfilePicture()))
                 .toList();
         return ResponseEntity.ok(resp);
     }
@@ -394,7 +395,7 @@ public class UsersController {
         long followingCount = user.getFollowing().size();
         PublicUserResponse dto = new PublicUserResponse(
                 user.getId(), user.getFullName(), user.getUsername(), user.getEmail(), user.getCreatedAt(),
-                followersCount, followingCount, user.isPrivate()
+                followersCount, followingCount, user.isPrivate(), user.getProfilePicture()
         );
         return ResponseEntity.ok(dto);
     }
@@ -406,7 +407,7 @@ public class UsersController {
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
         java.util.List<SafeUser> resp = user.getFollowers().stream()
-                .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt()))
+                .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt(), u.getProfilePicture()))
                 .toList();
         return ResponseEntity.ok(resp);
     }
@@ -418,7 +419,7 @@ public class UsersController {
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
         java.util.List<SafeUser> resp = user.getFollowing().stream()
-                .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt()))
+                .map(u -> new SafeUser(u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getCreatedAt(), u.getProfilePicture()))
                 .toList();
         return ResponseEntity.ok(resp);
     }
@@ -747,5 +748,34 @@ public class UsersController {
             followRequestRepository.delete(request);
             return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse("Follow request rejected"));
         }
+    }
+
+    /**
+     * Actualizar foto de perfil del usuario autenticado
+     */
+    @PatchMapping("/me/profile-picture")
+    public ResponseEntity<com.team.socialnetwork.dto.MessageResponse> updateProfilePicture(
+            Authentication authentication,
+            @Valid @RequestBody UpdateProfilePictureRequest request) {
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing or invalid token");
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+
+        // Actualizar la foto de perfil (puede ser null para eliminar)
+        user.setProfilePicture(request.getProfilePicture());
+        userRepository.save(user);
+
+        String message = request.getProfilePicture() == null || request.getProfilePicture().trim().isEmpty()
+                ? "Profile picture removed successfully"
+                : "Profile picture updated successfully";
+
+        return ResponseEntity.ok(new com.team.socialnetwork.dto.MessageResponse(message));
     }
 }

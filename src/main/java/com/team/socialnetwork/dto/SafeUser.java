@@ -8,6 +8,7 @@ public class SafeUser {
     private String username;
     private String email;
     private Instant createdAt;
+    private String profilePicture;
 
     public SafeUser() {}
 
@@ -17,6 +18,15 @@ public class SafeUser {
         this.username = username;
         this.email = email;
         this.createdAt = createdAt;
+    }
+
+    public SafeUser(Long id, String name, String username, String email, Instant createdAt, String profilePicture) {
+        this.id = id;
+        this.name = name;
+        this.username = username;
+        this.email = email;
+        this.createdAt = createdAt;
+        this.profilePicture = profilePicture;
     }
 
     public Long getId() { return id; }
@@ -29,4 +39,6 @@ public class SafeUser {
     public void setEmail(String email) { this.email = email; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public String getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
 }

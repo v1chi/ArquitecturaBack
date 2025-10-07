@@ -11,6 +11,7 @@ public class PublicUserResponse {
     private long followersCount;
     private long followingCount;
     private boolean isPrivate;
+    private String profilePicture;
 
     public PublicUserResponse() {}
 
@@ -24,6 +25,19 @@ public class PublicUserResponse {
         this.followersCount = followersCount;
         this.followingCount = followingCount;
         this.isPrivate = isPrivate;
+    }
+
+    public PublicUserResponse(Long id, String fullName, String username, String email, Instant createdAt,
+                              long followersCount, long followingCount, boolean isPrivate, String profilePicture) {
+        this.id = id;
+        this.fullName = fullName;
+        this.username = username;
+        this.email = email;
+        this.createdAt = createdAt;
+        this.followersCount = followersCount;
+        this.followingCount = followingCount;
+        this.isPrivate = isPrivate;
+        this.profilePicture = profilePicture;
     }
 
     public Long getId() { return id; }
@@ -42,4 +56,6 @@ public class PublicUserResponse {
     public void setFollowingCount(long followingCount) { this.followingCount = followingCount; }
     public boolean isPrivate() { return isPrivate; }
     public void setPrivate(boolean aPrivate) { isPrivate = aPrivate; }
+    public String getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
 }
