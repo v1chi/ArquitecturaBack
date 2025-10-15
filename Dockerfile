@@ -13,11 +13,11 @@ RUN mvn -q -DskipTests package && \
 # Run stage
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-ENV JAVA_OPTS=""
+#ENV JAVA_OPTS=""
 COPY --from=build /app/app.jar ./app.jar
 
 # Expose Spring Boot default port
 EXPOSE 8080
 
-CMD java $JAVA_OPTS -jar app.jar
+CMD java -jar app.jar
 
