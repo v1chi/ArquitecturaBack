@@ -19,5 +19,5 @@ COPY --from=build /app/app.jar ./app.jar
 # Expose Spring Boot default port
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+CMD java $JAVA_OPTS -jar app.jar
 
